@@ -18,7 +18,10 @@ app = FastAPI(title="Asuna AI Backend", version="1.0.0")
 
 allowed_origins = [
     origin.strip()
-    for origin in os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
+    for origin in os.getenv(
+        "CORS_ALLOW_ORIGINS",
+        "http://localhost:3000,http://localhost:5173,https://asuna-ai.vercel.app",
+    ).split(",")
     if origin.strip()
 ]
 

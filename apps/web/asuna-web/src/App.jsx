@@ -22,6 +22,7 @@ export default function App() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [currentState, setCurrentState] = useState('IDLE');
+  const [installPrompt, setInstallPrompt] = useState(null);
   const messagesEndRef = useRef(null);
 
   const send = useCallback(async (rawText) => {
@@ -36,14 +37,17 @@ export default function App() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, history: messages.slice(-8).map(({ sender, text: item }) => ({ role: sender === 'asuna' ? 'assistant' : 'user', content: item })) }),
       });
-      if (!response.ok) throw new Error('The local AI service is unavailable.');
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || `AI service returned ${response.status}.`);
+      }
       const data = await response.json();
       const reply = data.reply || 'I could not generate a response.';
       setMessages((current) => [...current, { sender: 'asuna', text: reply, time: clock() }]);
       setCurrentState('SPEAKING');
       speak(reply);
-    } catch {
-      const reply = 'I cannot reach the AI service. Check that Render is awake, GEMINI_API_KEY is saved in Render, and CORS_ALLOW_ORIGINS includes this website address.';
+    } catch (error) {
+      const reply = `I could not answer because ${error.message || 'the AI service is unavailable'}. Check the Render deployment, GEMINI_API_KEY, and CORS_ALLOW_ORIGINS.`;
       setMessages((current) => [...current, { sender: 'asuna', text: reply, time: clock() }]);
       setCurrentState('ERROR');
     } finally {
@@ -53,7 +57,29 @@ export default function App() {
   }, [busy, messages]);
 
   const voice = useVoiceAssistant({ onCommand: send });
-  useEffect(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), [messages]);
+  useEffect(() => {
+    // Some embedded/mobile browsers do not expose Element.scrollIntoView.
+    // Guard it so a successful reply can never crash the chat renderer.
+    if (typeof messagesEndRef.current?.scrollIntoView === 'function') {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    const onBeforeInstall = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+  }, []);
+
+  const installApp = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
 
   const onGesture = useCallback((gesture) => {
     if (gesture === 'PINCH') send('select the current item');
@@ -70,7 +96,7 @@ export default function App() {
   return <main className="app-shell">
     <header className="topbar">
       <div className="brand"><span className="brand-mark" aria-hidden="true" /><span>ASUNA AI</span></div>
-      <div className="topbar-actions"><button className="outline-button" onClick={() => setCameraOpen((open) => !open)}>📷 {cameraOpen ? 'Camera on' : 'Enable camera'}</button><button className="outline-button" onClick={() => alert('Desktop/Android agent pairing will be added here. This browser can only access the camera, microphone, and browser features you grant.')}>⌘ Device access</button></div>
+      <div className="topbar-actions">{installPrompt && <button className="outline-button" onClick={installApp}>↓ Install app</button>}<button className="outline-button" onClick={() => setCameraOpen((open) => !open)}>📷 {cameraOpen ? 'Camera on' : 'Enable camera'}</button><button className="outline-button" onClick={() => alert('Desktop/Android agent pairing will be added here. This browser can only access the camera, microphone, and browser features you grant.')}>⌘ Device access</button></div>
     </header>
     <div className="main-grid">
       <section className="chat-card" aria-label="Asuna conversation">

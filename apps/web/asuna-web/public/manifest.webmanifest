@@ -1,0 +1,17 @@
+{
+  "name": "Asuna AI",
+  "short_name": "Asuna",
+  "description": "A voice, gesture, and chat AI assistant.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D0406",
+  "theme_color": "#0D0406",
+  "icons": [
+    {
+      "src": "/asuna-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
