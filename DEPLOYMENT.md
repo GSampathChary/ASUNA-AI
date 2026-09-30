@@ -14,7 +14,7 @@ This guide walks you through fixing request/response errors and deploying Asuna 
    - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 4. Set your Environment Variables in Render:
    - `GEMINI_API_KEY`: Your Google Gemini API Key (or `OPENAI_API_KEY` if using OpenAI).
-   - `GEMINI_MODEL`: `gemini-2.0-flash` (or `gemini-1.5-flash`).
+   - `GEMINI_MODEL`: `gemini-2.0-flash`. This is the compatible fallback if the configured Gemini model is not available to your API key.
    - `CORS_ALLOW_ORIGINS`: Set to your Vercel URL (e.g. `https://asuna-ai.vercel.app`) or leave blank to automatically allow Vercel origins.
 5. Deploy the service and copy your public Render URL (e.g. `https://asuna-ai-api.onrender.com`).
 

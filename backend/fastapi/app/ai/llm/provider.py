@@ -96,8 +96,11 @@ class GeminiProvider(BaseLLMProvider):
             try:
                 result = await asyncio.to_thread(request_response, model)
             except urllib.error.HTTPError as err:
-                if err.code in (404, 400) and model != "gemini-1.5-flash":
-                    result = await asyncio.to_thread(request_response, "gemini-1.5-flash")
+                # Gemini 1.5 Flash is no longer available for this endpoint.
+                # Fall back to the documented 2.0 Flash model when a project
+                # does not have the configured model enabled.
+                if err.code in (404, 400) and model != "gemini-2.0-flash":
+                    result = await asyncio.to_thread(request_response, "gemini-2.0-flash")
                 else:
                     raise
             parts = result["candidates"][0]["content"]["parts"]
