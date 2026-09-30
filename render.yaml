@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: asuna-ai-api
+    runtime: python
+    plan: free
+    rootDir: backend/fastapi
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: ENVIRONMENT
+        value: production
+      - key: OPENAI_MODEL
+        value: gpt-5
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ASUNA_AGENT_TOKEN
+        sync: false
+      - key: CORS_ALLOW_ORIGINS
+        sync: false

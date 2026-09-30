@@ -5,6 +5,7 @@ import './asuna.css';
 
 const clock = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const initialMessages = [{ sender: 'asuna', text: 'Namaste — I am ready when you are. You can type, use voice, or enable camera gestures.', time: clock() }];
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 function speak(text) {
   if (!('speechSynthesis' in window)) return;
@@ -28,7 +29,7 @@ export default function App() {
     setInput('');
     setBusy(true);
     try {
-      const response = await fetch('http://localhost:8000/api/chat', {
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, history: messages.slice(-8).map(({ sender, text: item }) => ({ role: sender === 'asuna' ? 'assistant' : 'user', content: item })) }),
       });
