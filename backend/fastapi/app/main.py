@@ -115,3 +115,9 @@ async def root():
         "service": "Asuna AI Backend",
         "version": "1.0.0"
     }
+
+
+@app.get("/health")
+async def health():
+    """Unauthenticated deployment health check; does not expose secrets."""
+    return {"status": "healthy", "provider_configured": bool(os.getenv("GEMINI_API_KEY") or os.getenv("OPENAI_API_KEY"))}

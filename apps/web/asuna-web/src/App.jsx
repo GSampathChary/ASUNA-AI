@@ -6,7 +6,9 @@ import './asuna.css';
 
 const clock = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const initialMessages = [{ sender: 'asuna', text: 'Namaste — I am ready when you are. You can type, use voice, or enable camera gestures.', time: clock() }];
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://asuna-ai-6ivv.onrender.com').replace(/\/$/, '');
+// In production on Vercel, /api is proxied to Render by vercel.json. This
+// keeps the browser on one origin and prevents CORS from blocking chat.
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '')).replace(/\/$/, '');
 
 function speak(text) {
   if (!('speechSynthesis' in window)) return;
@@ -47,7 +49,7 @@ export default function App() {
       setCurrentState('SPEAKING');
       speak(reply);
     } catch (error) {
-      const reply = `I could not answer because ${error.message || 'the AI service is unavailable'}. Check the Render deployment, GEMINI_API_KEY, and CORS_ALLOW_ORIGINS.`;
+      const reply = `I could not answer because ${error.message || 'the AI service is unavailable'}. The Asuna API is not reachable yet; check that the Render service is live and its GEMINI_API_KEY is configured.`;
       setMessages((current) => [...current, { sender: 'asuna', text: reply, time: clock() }]);
       setCurrentState('ERROR');
     } finally {

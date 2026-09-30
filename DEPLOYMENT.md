@@ -21,7 +21,7 @@ The repository is configured for a static Vite frontend and a FastAPI API.
 1. Import the GitHub repository.
 2. Set **Root Directory** to `apps/web/asuna-web`.
 3. Vercel reads `vercel.json`; it builds with `npm run build` and publishes `dist`.
-4. Add `VITE_API_BASE_URL` with the Render URL from step 1. This value is public and must not contain a secret.
+4. No frontend API variable is required on Vercel: `vercel.json` proxies `/api/*` to Render. If you set `VITE_API_BASE_URL`, it overrides that proxy and must contain only the public Render URL.
 5. Deploy, then copy the `vercel.app` URL.
 
 ### Cloudflare Pages
@@ -29,7 +29,7 @@ The repository is configured for a static Vite frontend and a FastAPI API.
 1. In **Workers & Pages**, create a Pages project from the GitHub repository.
 2. Set **Root Directory** to `apps/web/asuna-web`.
 3. Use `npm run build` as the build command and `dist` as the output directory. `wrangler.toml` records the output directory for CLI-based deployment too.
-4. Add `VITE_API_BASE_URL` with the Render URL.
+4. Add `VITE_API_BASE_URL` with the Render URL. Cloudflare Pages does not use the Vercel proxy.
 5. Deploy, then copy the `pages.dev` URL.
 
 ## 3. Lock down the API
