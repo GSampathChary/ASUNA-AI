@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://asuna-ai-6ivv.onrender.com/api/:path*"
+      "destination": "https://asuna-ai-7xaz.onrender.com/api/:path*"
     }
   ]
 }

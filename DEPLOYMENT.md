@@ -12,7 +12,7 @@ The repository is configured for a static Vite frontend and a FastAPI API.
    - `ASUNA_AGENT_TOKEN`: a long random value reserved for a later paired desktop/mobile agent.
    - `CORS_ALLOW_ORIGINS`: leave blank for the first deploy, then set it after the frontend URL exists.
 5. Create the Blueprint and wait for the health check to pass.
-6. Copy the public Render URL, such as `https://asuna-ai-api.onrender.com`.
+6. Copy the public Render URL, such as `https://asuna-ai-api.onrender.com`. If Render assigns a new URL after recreating the service, update both `apps/web/asuna-web/vercel.json` and the `RENDER_API_URL` constant in `src/App.jsx` before deploying Vercel.
 
 ## 2. Deploy the frontend (choose one)
 

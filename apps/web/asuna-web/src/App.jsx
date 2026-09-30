@@ -9,7 +9,7 @@ const initialMessages = [{ sender: 'asuna', text: 'Namaste — I am ready when y
 // In production on Vercel, /api is proxied to Render by vercel.json. This
 // keeps the browser on one origin and prevents CORS from blocking chat.
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '')).replace(/\/$/, '');
-const RENDER_API_URL = 'https://asuna-ai-6ivv.onrender.com';
+const RENDER_API_URL = 'https://asuna-ai-7xaz.onrender.com';
 const sleep = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 
 async function requestChat(payload, onRetry) {
