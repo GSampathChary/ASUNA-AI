@@ -69,7 +69,7 @@ class GeminiProvider(BaseLLMProvider):
         for message in messages:
             role = "model" if message.get("role") == "assistant" else "user"
             contents.append({"role": role, "parts": [{"text": message.get("content", "")} ]})
-        model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
         payload = json.dumps({
             "systemInstruction": {"parts": [{"text": (
                 "You are Asuna, a helpful, accurate personal AI assistant. Answer naturally and clearly. "
@@ -79,9 +79,9 @@ class GeminiProvider(BaseLLMProvider):
             "generationConfig": {"temperature": temperature},
         }).encode("utf-8")
 
-        def request_response():
+        def request_response(model_name: str):
             request = urllib.request.Request(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}",
                 data=payload,
                 headers={"Content-Type": "application/json"},
                 method="POST",
@@ -90,18 +90,33 @@ class GeminiProvider(BaseLLMProvider):
                 return json.loads(response.read().decode("utf-8"))
 
         try:
-            result = await asyncio.to_thread(request_response)
+            try:
+                result = await asyncio.to_thread(request_response, model)
+            except urllib.error.HTTPError as err:
+                if err.code in (404, 400) and model != "gemini-1.5-flash":
+                    result = await asyncio.to_thread(request_response, "gemini-1.5-flash")
+                else:
+                    raise
             parts = result["candidates"][0]["content"]["parts"]
             return LLMResponse(content="".join(part.get("text", "") for part in parts))
-        except (urllib.error.HTTPError, urllib.error.URLError, KeyError, IndexError) as error:
-            raise RuntimeError("Gemini could not generate a response. Check the Render key and model settings.") from error
+        except urllib.error.HTTPError as error:
+            err_body = error.read().decode("utf-8", errors="ignore") if hasattr(error, "read") else ""
+            if error.code == 400 or error.code == 403:
+                msg = f"Gemini API authentication failed ({error.code}). Check your GEMINI_API_KEY."
+            elif error.code == 429:
+                msg = "Gemini API quota exceeded or rate limited. Please try again later."
+            else:
+                msg = f"Gemini request failed ({error.code}): {err_body[:120]}"
+            raise RuntimeError(msg) from error
+        except (urllib.error.URLError, KeyError, IndexError) as error:
+            raise RuntimeError("Gemini could not generate a response. Check network connectivity and model output format.") from error
 
 
 class LocalFallbackProvider(BaseLLMProvider):
     async def generate_response(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> LLMResponse:
         question = messages[-1]["content"] if messages else ""
         return LLMResponse(content=(
-            "The AI provider is not configured yet. Add OPENAI_API_KEY to the backend environment, "
+            "The AI provider is not configured yet. Add GEMINI_API_KEY (or OPENAI_API_KEY) to your backend Environment Variables on Render (or in .env for local testing), "
             f"then I can answer questions such as: {question}"
         ))
 
