@@ -9,6 +9,40 @@ const initialMessages = [{ sender: 'asuna', text: 'Namaste — I am ready when y
 // In production on Vercel, /api is proxied to Render by vercel.json. This
 // keeps the browser on one origin and prevents CORS from blocking chat.
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '')).replace(/\/$/, '');
+const RENDER_API_URL = 'https://asuna-ai-6ivv.onrender.com';
+const sleep = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+
+async function requestChat(payload, onRetry) {
+  // The relative endpoint is the normal Vercel route. The direct Render
+  // endpoint is a fallback while a free Render instance wakes up.
+  const endpoints = API_BASE_URL
+    ? [`${API_BASE_URL}/api/chat`]
+    : ['/api/chat', `${RENDER_API_URL}/api/chat`];
+  let lastError = new Error('The AI service is unavailable.');
+
+  for (const endpoint of endpoints) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (response.ok) return response.json();
+        const error = await response.json().catch(() => ({}));
+        lastError = new Error(error.detail || `AI service returned ${response.status}.`);
+        if (![408, 429, 500, 502, 503, 504].includes(response.status)) throw lastError;
+      } catch (error) {
+        lastError = error;
+      }
+      if (attempt < 2) {
+        onRetry?.(attempt + 1);
+        await sleep((attempt + 1) * 3000);
+      }
+    }
+  }
+  throw lastError;
+}
 
 function speak(text) {
   if (!('speechSynthesis' in window)) return;
@@ -35,15 +69,10 @@ export default function App() {
     setBusy(true);
     setCurrentState('THINKING');
     try {
-      const response = await fetch(`${API_BASE_URL}/api/chat`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history: messages.slice(-8).map(({ sender, text: item }) => ({ role: sender === 'asuna' ? 'assistant' : 'user', content: item })) }),
-      });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.detail || `AI service returned ${response.status}.`);
-      }
-      const data = await response.json();
+      const data = await requestChat(
+        { message: text, history: messages.slice(-8).map(({ sender, text: item }) => ({ role: sender === 'asuna' ? 'assistant' : 'user', content: item })) },
+        () => setCurrentState('THINKING'),
+      );
       const reply = data.reply || 'I could not generate a response.';
       setMessages((current) => [...current, { sender: 'asuna', text: reply, time: clock() }]);
       setCurrentState('SPEAKING');
