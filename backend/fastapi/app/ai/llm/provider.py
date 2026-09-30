@@ -1,57 +1,71 @@
-import re
+import asyncio
+import json
+import os
+import urllib.error
+import urllib.request
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional
+
 from pydantic import BaseModel
 
 
 class LLMResponse(BaseModel):
     content: str
     language: str = "en"
-    tool_calls: Optional[List[Dict[str, Any]]] = None
+    tool_calls: Optional[List[Dict[str, str]]] = None
     finish_reason: str = "stop"
 
 
 class BaseLLMProvider(ABC):
     @abstractmethod
-    async def generate_response(
-        self,
-        messages: List[Dict[str, str]],
-        tools: Optional[List[Dict[str, Any]]] = None,
-        temperature: float = 0.7
-    ) -> LLMResponse:
+    async def generate_response(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> LLMResponse:
         pass
 
 
-class ChatGPTMultilingualProvider(BaseLLMProvider):
-    """Trilingual ChatGPT-grade LLM provider generating answers in English, Telugu, Hindi, or mixed languages."""
+class OpenAIResponsesProvider(BaseLLMProvider):
+    """Server-side Responses API client. The API key is never sent to the browser."""
 
-    async def generate_response(
-        self,
-        messages: List[Dict[str, str]],
-        tools: Optional[List[Dict[str, Any]]] = None,
-        temperature: float = 0.7
-    ) -> LLMResponse:
-        last_msg = messages[-1]["content"] if messages else ""
-        lower = last_msg.lower()
+    async def generate_response(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> LLMResponse:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY is not configured")
+        payload = json.dumps({
+            "model": os.getenv("OPENAI_MODEL", "gpt-5"),
+            "instructions": (
+                "You are Asuna, a thoughtful personal AI assistant. Give accurate, concise, useful answers. "
+                "Never claim to have controlled a device or accessed camera, microphone, files, or other apps unless a trusted agent explicitly reports success. "
+                "For consequential device actions, explain what will happen and ask for confirmation."
+            ),
+            "input": messages,
+        }).encode("utf-8")
 
-        # Telugu Script Unicode Range: \u0C00-\u0C7F
-        has_telugu_script = bool(re.search(r'[\u0C00-\u0C7F]', last_msg))
-        # Hindi Script Unicode Range: \u0900-\u097F
-        has_hindi_script = bool(re.search(r'[\u0900-\u097F]', last_msg))
+        def request_response():
+            request = urllib.request.Request(
+                "https://api.openai.com/v1/responses",
+                data=payload,
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=45) as response:
+                return json.loads(response.read().decode("utf-8"))
 
-        # Language Detection Logic
-        if has_telugu_script or any(w in lower for w in ["telangana", "telugu", "cheyyi", "namaste", "ela"]):
-            reply = f"నమస్తే! మీ ప్రశ్న '{last_msg}' కి నా సమాధానం: Asuna AI ఒక పూర్తి మల్టీమోడల్ అసిస్టెంట్. ఇది మీ ఫోన్ మరియు కంప్యూటర్‌ని వాయిస్ మరియు గెస్టర్ల ద్వారా నియంత్రించగలదు."
-            lang = "te"
-        elif has_hindi_script or any(w in lower for w in ["hindi", "karo", "kya", "kaise", "namaste", "batao"]):
-            reply = f"नमस्ते! आपके सवाल '{last_msg}' का जवाब: मैं Asuna AI हूँ, आपका पर्सनल AI असिस्टेंट। मैं आपके हर सवाल का जवाब दे सकती हूँ और आपके डिवाइस को पूरी तरह कंट्रोल कर सकती हूँ।"
-            lang = "hi"
-        else:
-            reply = f"Asuna AI Brain (ChatGPT Engine): Here is the comprehensive answer to your query '{last_msg}'. I can explain concepts, write code, answer general knowledge questions, and execute device actions."
-            lang = "en"
-
-        return LLMResponse(content=reply, language=lang, tool_calls=None)
+        try:
+            result = await asyncio.to_thread(request_response)
+        except urllib.error.HTTPError as error:
+            raise RuntimeError(f"AI provider request failed ({error.code})") from error
+        except urllib.error.URLError as error:
+            raise RuntimeError("AI provider is unreachable") from error
+        return LLMResponse(content=result.get("output_text", "I could not generate a response."))
 
 
-def get_llm_provider(provider_type: str = "chatgpt") -> BaseLLMProvider:
-    return ChatGPTMultilingualProvider()
+class LocalFallbackProvider(BaseLLMProvider):
+    async def generate_response(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> LLMResponse:
+        question = messages[-1]["content"] if messages else ""
+        return LLMResponse(content=(
+            "The AI provider is not configured yet. Add OPENAI_API_KEY to the backend environment, "
+            f"then I can answer questions such as: {question}"
+        ))
+
+
+def get_llm_provider() -> BaseLLMProvider:
+    return OpenAIResponsesProvider() if os.getenv("OPENAI_API_KEY") else LocalFallbackProvider()

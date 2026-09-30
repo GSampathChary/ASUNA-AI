@@ -1,14 +1,16 @@
 """FastAPI Core Application for Asuna AI"""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sys
 import subprocess
+import os
 
 from app.api.websocket import router as ws_router
 from app.api.auth import router as auth_router
 from app.tools.system_tools import register_standard_tools
+from app.ai.llm.provider import get_llm_provider
 
 register_standard_tools()
 
@@ -32,9 +34,28 @@ class CommandRequest(BaseModel):
     value: int = 100
 
 
+class ChatRequest(BaseModel):
+    message: str
+    history: list[dict[str, str]] = []
+
+
+@app.post("/api/chat")
+async def chat(req: ChatRequest):
+    """Answer a conversational request without exposing model credentials to clients."""
+    messages = [*req.history[-8:], {"role": "user", "content": req.message}]
+    response = await get_llm_provider().generate_response(messages)
+    return {"reply": response.content, "provider": "openai" if __import__("os").getenv("OPENAI_API_KEY") else "local-fallback"}
+
+
 @app.post("/api/execute_action")
-async def execute_action(req: CommandRequest):
+async def execute_action(req: CommandRequest, x_asuna_agent_token: str | None = Header(default=None)):
     """Executes native Windows / Device actions instantly"""
+    paired_token = os.getenv("ASUNA_AGENT_TOKEN")
+    if not paired_token or x_asuna_agent_token != paired_token:
+        raise HTTPException(
+            status_code=403,
+            detail="Device actions require a paired Asuna agent and explicit confirmation.",
+        )
     cmd = req.command.lower()
     
     if "volume" in cmd or "sound" in cmd or req.action_type == "volume":
