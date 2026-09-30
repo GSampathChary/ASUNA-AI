@@ -24,14 +24,24 @@ class LLMResponse(BaseModel):
 
 class BaseLLMProvider(ABC):
     @abstractmethod
-    async def generate_response(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> LLMResponse:
+    async def generate_response(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        system_context: str = "",
+    ) -> LLMResponse:
         pass
 
 
 class OpenAIResponsesProvider(BaseLLMProvider):
     """Server-side Responses API client. The API key is never sent to the browser."""
 
-    async def generate_response(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> LLMResponse:
+    async def generate_response(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        system_context: str = "",
+    ) -> LLMResponse:
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise RuntimeError("OPENAI_API_KEY is not configured")
@@ -40,7 +50,8 @@ class OpenAIResponsesProvider(BaseLLMProvider):
             "instructions": (
                 "You are Asuna, a thoughtful personal AI assistant. Give accurate, concise, useful answers. "
                 "Never claim to have controlled a device or accessed camera, microphone, files, or other apps unless a trusted agent explicitly reports success. "
-                "For consequential device actions, explain what will happen and ask for confirmation."
+                "For consequential device actions, explain what will happen and ask for confirmation. "
+                f"{system_context}"
             ),
             "input": messages,
         }).encode("utf-8")
@@ -67,7 +78,12 @@ class OpenAIResponsesProvider(BaseLLMProvider):
 class GeminiProvider(BaseLLMProvider):
     """Server-side Gemini REST provider. The key remains in Render, never the browser."""
 
-    async def generate_response(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> LLMResponse:
+    async def generate_response(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        system_context: str = "",
+    ) -> LLMResponse:
         global _resolved_gemini_model
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
@@ -79,17 +95,28 @@ class GeminiProvider(BaseLLMProvider):
         # Flash is optimized for low latency.  The discovery fallback below
         # keeps deployments working if a project cannot access this alias.
         model = _resolved_gemini_model or os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"
-        payload = json.dumps({
+        latest_request_terms = (
+            "today", "current", "latest", "recent", "news", "score", "match", "weather",
+            "date", "time", "price", "stock", "election", "who won",
+        )
+        latest_request = any(term in messages[-1].get("content", "").lower() for term in latest_request_terms) if messages else False
+        request_body = {
             "systemInstruction": {"parts": [{"text": (
                 "You are Asuna, a helpful, accurate personal AI assistant. Start with the direct answer, "
                 "then add only the detail needed to be useful. Answer naturally and clearly. "
-                "Never claim device control or sensor access unless a trusted paired device agent confirms it."
+                "Never claim device control or sensor access unless a trusted paired device agent confirms it. "
+                f"{system_context}"
             )}]},
             "contents": contents,
             # Keeping ordinary chat answers bounded reduces generation time
             # while leaving enough room for a helpful explanation.
             "generationConfig": {"temperature": temperature, "maxOutputTokens": 1024},
-        }).encode("utf-8")
+        }
+        # Gemini's Google Search grounding supplies current information only
+        # when it is relevant, avoiding extra latency for ordinary chat.
+        if latest_request:
+            request_body["tools"] = [{"google_search": {}}]
+        payload = json.dumps(request_body).encode("utf-8")
 
         def request_response(model_name: str):
             request = urllib.request.Request(
@@ -163,7 +190,12 @@ class GeminiProvider(BaseLLMProvider):
 
 
 class LocalFallbackProvider(BaseLLMProvider):
-    async def generate_response(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> LLMResponse:
+    async def generate_response(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        system_context: str = "",
+    ) -> LLMResponse:
         question = messages[-1]["content"] if messages else ""
         return LLMResponse(content=(
             "The AI provider is not configured yet. Add GEMINI_API_KEY (or OPENAI_API_KEY) to your backend Environment Variables on Render (or in .env for local testing), "

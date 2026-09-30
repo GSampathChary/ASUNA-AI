@@ -1,6 +1,7 @@
 import sys
 import subprocess
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 try:
@@ -61,6 +62,8 @@ class CommandRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: list[dict[str, str]] = []
+    client_time: str | None = None
+    client_timezone: str | None = None
 
 
 # A lightweight safety rail for the initial public deployment. Replace with
@@ -81,8 +84,15 @@ async def chat(req: ChatRequest, request: Request):
         raise HTTPException(status_code=429, detail="Too many requests. Please try again in a few minutes.")
     chat_requests[client_id] = [*recent, now]
     messages = [*req.history[-8:], {"role": "user", "content": req.message}]
+    current_time = req.client_time or datetime.now(timezone.utc).isoformat()
+    timezone_name = req.client_timezone or "UTC"
+    system_context = (
+        f"The user's current local date/time is {current_time} in timezone {timezone_name}. "
+        "Use this as the authoritative current date/time. For current events, live scores, weather, "
+        "or other changing facts, use available search grounding and clearly state uncertainty if it is unavailable."
+    )
     try:
-        response = await get_llm_provider().generate_response(messages)
+        response = await get_llm_provider().generate_response(messages, system_context=system_context)
     except RuntimeError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     provider = "gemini" if os.getenv("GEMINI_API_KEY") else "openai" if os.getenv("OPENAI_API_KEY") else "local-fallback"

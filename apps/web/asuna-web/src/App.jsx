@@ -73,7 +73,12 @@ export default function App() {
     setStatusText('Thinking…');
     try {
       const data = await requestChat(
-        { message: text, history: messages.slice(-8).map(({ sender, text: item }) => ({ role: sender === 'asuna' ? 'assistant' : 'user', content: item })) },
+        {
+          message: text,
+          history: messages.filter((message) => !message.pending).slice(-8).map(({ sender, text: item }) => ({ role: sender === 'asuna' ? 'assistant' : 'user', content: item })),
+          client_time: new Date().toString(),
+          client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
         (_attempt, msg) => {
           setCurrentState('THINKING');
           if (msg) setStatusText(msg);
