@@ -92,15 +92,44 @@ class GeminiProvider(BaseLLMProvider):
             with urllib.request.urlopen(request, timeout=45) as response:
                 return json.loads(response.read().decode("utf-8"))
 
+        def discover_generation_model() -> str:
+            request = urllib.request.Request(
+                "https://generativelanguage.googleapis.com/v1beta/models",
+                headers={"x-goog-api-key": api_key},
+                method="GET",
+            )
+            with urllib.request.urlopen(request, timeout=20) as response:
+                models = json.loads(response.read().decode("utf-8")).get("models", [])
+            available = {
+                item.get("name", "").removeprefix("models/")
+                for item in models
+                if "generateContent" in item.get("supportedGenerationMethods", [])
+            }
+            # Prefer current Flash models, but only select one explicitly
+            # advertised by the API key's project.
+            preferred = (
+                "gemini-3.5-flash",
+                "gemini-3-flash",
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
+            )
+            for candidate in preferred:
+                if candidate in available:
+                    return candidate
+            if available:
+                return sorted(available)[0]
+            raise RuntimeError("No Gemini models with generateContent access are available for this API key.")
+
         try:
             try:
                 result = await asyncio.to_thread(request_response, model)
             except urllib.error.HTTPError as err:
-                # Gemini 1.5 Flash is no longer available for this endpoint.
-                # Fall back to the documented 2.0 Flash model when a project
-                # does not have the configured model enabled.
-                if err.code in (404, 400) and model != "gemini-2.0-flash":
-                    result = await asyncio.to_thread(request_response, "gemini-2.0-flash")
+                # Model availability differs by project and changes over time.
+                # Ask Gemini for the models this exact API key can use instead
+                # of falling back to a retired hard-coded model name.
+                if err.code in (404, 400):
+                    available_model = await asyncio.to_thread(discover_generation_model)
+                    result = await asyncio.to_thread(request_response, available_model)
                 else:
                     raise
             parts = result["candidates"][0]["content"]["parts"]

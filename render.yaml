@@ -19,7 +19,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-2.0-flash
+        value: gemini-3.5-flash
       - key: ASUNA_AGENT_TOKEN
         sync: false
       - key: CORS_ALLOW_ORIGINS

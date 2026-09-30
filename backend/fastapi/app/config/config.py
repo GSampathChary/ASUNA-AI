@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # AI & LLM Settings
-    DEFAULT_LLM_PROVIDER: str = "mock"  # mock, openai, ollama
+    DEFAULT_LLM_PROVIDER: str = "gemini"  # gemini, openai, ollama
     OPENAI_API_KEY: Optional[str] = None
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     EMBEDDING_MODEL: str = "text-embedding-3-small"
