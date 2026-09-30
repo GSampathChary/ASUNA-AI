@@ -81,9 +81,12 @@ class GeminiProvider(BaseLLMProvider):
 
         def request_response(model_name: str):
             request = urllib.request.Request(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent",
                 data=payload,
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": api_key,
+                },
                 method="POST",
             )
             with urllib.request.urlopen(request, timeout=45) as response:

@@ -31,7 +31,7 @@ register_standard_tools()
 app = FastAPI(title="Asuna AI Backend", version="1.0.0")
 
 allowed_origins = [
-    origin.strip()
+    origin.strip().rstrip("/")
     for origin in os.getenv(
         "CORS_ALLOW_ORIGINS",
         "http://localhost:3000,http://localhost:5173,https://asuna-ai.vercel.app",
@@ -42,7 +42,8 @@ allowed_origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=True,
+    # The public chat API uses no cookies or browser credentials.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
