@@ -1,0 +1,2 @@
+// Frame Processor
+class FrameProcessor {}

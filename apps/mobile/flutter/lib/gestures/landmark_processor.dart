@@ -1,0 +1,2 @@
+// Landmark Processor
+class LandmarkProcessor {}

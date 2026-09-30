@@ -1,0 +1,2 @@
+// Gesture Detector
+class GestureDetectorService {}

@@ -1,0 +1,2 @@
+// Idle Effect
+class IdleEffect {}

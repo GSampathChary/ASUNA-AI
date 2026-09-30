@@ -1,0 +1,2 @@
+// Camera Controller
+class CameraController {}

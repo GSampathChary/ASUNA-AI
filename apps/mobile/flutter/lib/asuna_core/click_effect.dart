@@ -1,0 +1,2 @@
+// Click Effect
+class ClickEffect {}

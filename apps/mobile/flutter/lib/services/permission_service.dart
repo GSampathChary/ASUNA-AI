@@ -1,0 +1,2 @@
+// Permission Service
+class PermissionService {}

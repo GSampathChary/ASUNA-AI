@@ -1,0 +1,2 @@
+// Gesture Mapper
+class GestureMapper {}

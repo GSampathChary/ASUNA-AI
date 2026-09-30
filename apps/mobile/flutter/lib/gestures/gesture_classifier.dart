@@ -1,0 +1,2 @@
+// Gesture Classifier
+class GestureClassifier {}

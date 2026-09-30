@@ -1,0 +1,2 @@
+// STT Service
+class STTService {}

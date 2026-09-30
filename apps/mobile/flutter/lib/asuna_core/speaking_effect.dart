@@ -1,0 +1,2 @@
+// Speaking Effect
+class SpeakingEffect {}

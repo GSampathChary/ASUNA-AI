@@ -1,0 +1,11 @@
+# Dependencies & Build outputs
+node_modules/
+__pycache__/
+*.pyc
+.env
+build/
+dist/
+.dart_tool/
+.flutter-plugins
+.idea/
+.vscode/

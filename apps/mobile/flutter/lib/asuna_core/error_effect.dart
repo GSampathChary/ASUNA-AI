@@ -1,0 +1,2 @@
+// Error Effect
+class ErrorEffect {}

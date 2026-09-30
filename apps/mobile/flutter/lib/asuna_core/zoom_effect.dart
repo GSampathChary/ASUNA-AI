@@ -1,0 +1,2 @@
+// Zoom Effect
+class ZoomEffect {}

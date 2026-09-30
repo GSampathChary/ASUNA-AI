@@ -1,0 +1,2 @@
+// VAD Service
+class VADService {}

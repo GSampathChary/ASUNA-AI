@@ -1,0 +1,2 @@
+// Voice Session
+class VoiceSession {}

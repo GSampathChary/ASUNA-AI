@@ -1,0 +1,2 @@
+// Scroll Effect
+class ScrollEffect {}

@@ -1,0 +1,2 @@
+// Vision Context
+class VisionContext {}

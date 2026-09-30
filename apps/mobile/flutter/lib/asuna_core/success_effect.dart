@@ -1,0 +1,2 @@
+// Success Effect
+class SuccessEffect {}

@@ -1,0 +1,2 @@
+// WebSocket Service
+class WebSocketService {}

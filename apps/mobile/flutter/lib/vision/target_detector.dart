@@ -1,0 +1,2 @@
+// Target Detector
+class TargetDetector {}

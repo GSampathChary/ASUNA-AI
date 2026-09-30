@@ -1,0 +1,2 @@
+// Object Detector
+class ObjectDetector {}

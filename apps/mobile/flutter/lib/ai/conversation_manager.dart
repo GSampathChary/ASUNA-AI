@@ -1,0 +1,2 @@
+// Conversation Manager
+class ConversationManager {}

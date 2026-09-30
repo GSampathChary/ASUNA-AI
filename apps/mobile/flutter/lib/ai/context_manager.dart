@@ -1,0 +1,2 @@
+// Context Manager
+class ContextManager {}

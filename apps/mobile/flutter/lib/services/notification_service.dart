@@ -1,0 +1,2 @@
+// Notification Service
+class NotificationService {}

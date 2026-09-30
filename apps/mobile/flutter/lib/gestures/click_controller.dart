@@ -1,0 +1,2 @@
+// Click Controller
+class ClickController {}

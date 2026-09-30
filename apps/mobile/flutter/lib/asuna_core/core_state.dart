@@ -1,0 +1,2 @@
+// Core State
+class CoreState {}

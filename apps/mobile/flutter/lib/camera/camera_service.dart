@@ -1,0 +1,2 @@
+// Camera Service
+class CameraService {}
