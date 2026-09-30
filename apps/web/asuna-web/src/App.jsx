@@ -34,7 +34,7 @@ async function requestChat(payload, onRetry) {
       }
       if (attempt < 3) {
         onRetry?.(attempt + 1, attempt >= 1 ? 'Server is waking up on Render (free tier), retrying…' : 'Connecting to AI service…');
-        await sleep((attempt + 1) * 3000);
+        await sleep((attempt + 1) * 1000);
       }
     }
   }
@@ -62,7 +62,11 @@ export default function App() {
   const send = useCallback(async (rawText) => {
     const text = rawText.trim();
     if (!text || busy) return;
+    const pendingId = `pending-${Date.now()}`;
     setMessages((current) => [...current, { sender: 'user', text, time: clock() }]);
+    // Give immediate acknowledgement while the model is generating. This also
+    // makes a Render cold start feel responsive instead of appearing stuck.
+    setMessages((current) => [...current, { id: pendingId, sender: 'asuna', text: 'Asuna is thinking…', time: clock(), pending: true }]);
     setInput('');
     setBusy(true);
     setCurrentState('THINKING');
@@ -76,13 +80,17 @@ export default function App() {
         },
       );
       const reply = data.reply || 'I could not generate a response.';
-      setMessages((current) => [...current, { sender: 'asuna', text: reply, time: clock() }]);
+      setMessages((current) => current.map((message) => (
+        message.id === pendingId ? { ...message, text: reply, time: clock(), pending: false } : message
+      )));
       setCurrentState('SPEAKING');
       setStatusText('Ready to help');
       speak(reply);
     } catch (error) {
       const reply = `I could not answer because ${error.message || 'the AI service is unavailable'}. The Asuna API is not reachable yet; check that your Render service is deployed and VITE_API_BASE_URL is configured in Vercel.`;
-      setMessages((current) => [...current, { sender: 'asuna', text: reply, time: clock() }]);
+      setMessages((current) => current.map((message) => (
+        message.id === pendingId ? { ...message, text: reply, time: clock(), pending: false } : message
+      )));
       setCurrentState('ERROR');
       setStatusText('Error connecting');
     } finally {
@@ -139,8 +147,8 @@ export default function App() {
     <div className="main-grid">
       <section className="chat-card" aria-label="Asuna conversation">
         <div className="card-header"><div><span className="eyebrow">CONVERSATION</span><strong>{statusText}</strong></div><span className="capability">Private by default</span></div>
-        <div className="messages">{messages.map((message, index) => <article className={`message ${message.sender === 'user' ? 'user' : ''}`} key={`${message.time}-${index}`}>{message.text}<time>{message.time}</time></article>)}<div ref={messagesEndRef} /></div>
-        <form className="composer" onSubmit={(event) => { event.preventDefault(); send(input); }}><input value={input} onChange={(event) => setInput(event.target.value)} aria-label="Ask Asuna" placeholder="Ask anything…" /><button className="send-button" type="submit" disabled={busy}>Send</button></form>
+        <div className="messages">{messages.map((message, index) => <article className={`message ${message.sender === 'user' ? 'user' : ''} ${message.pending ? 'pending' : ''}`} key={message.id || `${message.time}-${index}`}>{message.text}<time>{message.time}</time></article>)}<div ref={messagesEndRef} /></div>
+        <form className="composer" onSubmit={(event) => { event.preventDefault(); send(input); }}><input value={input} onChange={(event) => setInput(event.target.value)} aria-label="Ask Asuna" placeholder="Ask anything…" /><button className="send-button" type="submit" disabled={busy}>{busy ? 'Thinking…' : 'Send'}</button></form>
       </section>
       <section className="stage" aria-label="Asuna controls">
         {cameraOpen && <CameraGesturePanel onGesture={onGesture} onClose={() => setCameraOpen(false)} />}

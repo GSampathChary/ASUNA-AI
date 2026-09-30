@@ -9,6 +9,12 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel
 
 
+# A Render instance stays alive for many requests.  Retaining the working model
+# avoids a failed request plus a /models lookup on every chat message when a
+# model alias is retired by Gemini.
+_resolved_gemini_model: Optional[str] = None
+
+
 class LLMResponse(BaseModel):
     content: str
     language: str = "en"
@@ -62,6 +68,7 @@ class GeminiProvider(BaseLLMProvider):
     """Server-side Gemini REST provider. The key remains in Render, never the browser."""
 
     async def generate_response(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> LLMResponse:
+        global _resolved_gemini_model
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise RuntimeError("GEMINI_API_KEY is not configured")
@@ -69,14 +76,19 @@ class GeminiProvider(BaseLLMProvider):
         for message in messages:
             role = "model" if message.get("role") == "assistant" else "user"
             contents.append({"role": role, "parts": [{"text": message.get("content", "")} ]})
-        model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        # Flash is optimized for low latency.  The discovery fallback below
+        # keeps deployments working if a project cannot access this alias.
+        model = _resolved_gemini_model or os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"
         payload = json.dumps({
             "systemInstruction": {"parts": [{"text": (
-                "You are Asuna, a helpful, accurate personal AI assistant. Answer naturally and clearly. "
+                "You are Asuna, a helpful, accurate personal AI assistant. Start with the direct answer, "
+                "then add only the detail needed to be useful. Answer naturally and clearly. "
                 "Never claim device control or sensor access unless a trusted paired device agent confirms it."
             )}]},
             "contents": contents,
-            "generationConfig": {"temperature": temperature},
+            # Keeping ordinary chat answers bounded reduces generation time
+            # while leaving enough room for a helpful explanation.
+            "generationConfig": {"temperature": temperature, "maxOutputTokens": 1024},
         }).encode("utf-8")
 
         def request_response(model_name: str):
@@ -130,8 +142,11 @@ class GeminiProvider(BaseLLMProvider):
                 if err.code in (404, 400):
                     available_model = await asyncio.to_thread(discover_generation_model)
                     result = await asyncio.to_thread(request_response, available_model)
+                    _resolved_gemini_model = available_model
                 else:
                     raise
+            else:
+                _resolved_gemini_model = model
             parts = result["candidates"][0]["content"]["parts"]
             return LLMResponse(content="".join(part.get("text", "") for part in parts))
         except urllib.error.HTTPError as error:
