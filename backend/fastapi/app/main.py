@@ -1,11 +1,25 @@
-"""FastAPI Core Application for Asuna AI"""
+import sys
+import subprocess
+import os
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+    # Load .env from current directory or project root
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    root_env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path)
+    elif root_env_path.exists():
+        load_dotenv(dotenv_path=root_env_path)
+    else:
+        load_dotenv()
+except ImportError:
+    pass
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import sys
-import subprocess
-import os
 
 from app.api.websocket import router as ws_router
 from app.api.auth import router as auth_router

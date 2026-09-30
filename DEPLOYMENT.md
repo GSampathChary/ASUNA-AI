@@ -1,56 +1,53 @@
-# Deploy Asuna AI
+# Deploying Asuna AI (Render Backend + Vercel Frontend)
 
-The repository is configured for a static Vite frontend and a FastAPI API.
+This guide walks you through fixing request/response errors and deploying Asuna AI publicly.
 
-## 1. Create the API on Render
+---
 
-1. In Render, select **New** then **Blueprint**.
-2. Connect `GSampathChary/ASUNA-AI` and select the `main` branch.
-3. Render reads `render.yaml` and proposes the `asuna-ai-api` service.
-4. Enter values for the requested secrets:
-   - `GEMINI_API_KEY`: server-only Gemini API key (recommended if using Gemini). Configure `OPENAI_API_KEY` instead only if using OpenAI.
-   - `ASUNA_AGENT_TOKEN`: a long random value reserved for a later paired desktop/mobile agent.
-   - `CORS_ALLOW_ORIGINS`: leave blank for the first deploy, then set it after the frontend URL exists.
-5. Create the Blueprint and wait for the health check to pass.
-6. Copy the public Render URL, such as `https://asuna-ai-api.onrender.com`. If Render assigns a new URL after recreating the service, update both `apps/web/asuna-web/vercel.json` and the `RENDER_API_URL` constant in `src/App.jsx` before deploying Vercel.
+## 1. Backend Setup on Render
 
-## 2. Deploy the frontend (choose one)
+1. Go to [Render Dashboard](https://dashboard.render.com/) and click **New → Blueprint** (or **Web Service**).
+2. Connect your GitHub repository (`GSampathChary/ASUNA-AI`).
+3. Render will read `render.yaml` and configure the service:
+   - **Root Directory**: `backend/fastapi`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+4. Set your Environment Variables in Render:
+   - `GEMINI_API_KEY`: Your Google Gemini API Key (or `OPENAI_API_KEY` if using OpenAI).
+   - `GEMINI_MODEL`: `gemini-2.0-flash` (or `gemini-1.5-flash`).
+   - `CORS_ALLOW_ORIGINS`: Set to your Vercel URL (e.g. `https://asuna-ai.vercel.app`) or leave blank to automatically allow Vercel origins.
+5. Deploy the service and copy your public Render URL (e.g. `https://asuna-ai-api.onrender.com`).
 
-### Vercel
+---
 
-1. Import the GitHub repository.
-2. Set **Root Directory** to `apps/web/asuna-web`.
-3. Vercel reads `vercel.json`; it builds with `npm run build` and publishes `dist`.
-4. No frontend API variable is required on Vercel: `vercel.json` proxies `/api/*` to Render. If you set `VITE_API_BASE_URL`, it overrides that proxy and must contain only the public Render URL.
-5. Deploy, then copy the `vercel.app` URL.
+## 2. Frontend Setup on Vercel
 
-### Cloudflare Pages
+1. Go to [Vercel Dashboard](https://vercel.com/) and click **Add New → Project**.
+2. Import your GitHub repository (`GSampathChary/ASUNA-AI`).
+3. Set **Root Directory** to `apps/web/asuna-web`.
+4. Under **Environment Variables**, add:
+   - **Key**: `VITE_API_BASE_URL`
+   - **Value**: Your actual Render backend URL (e.g., `https://asuna-ai-api.onrender.com`)
+5. Click **Deploy**.
 
-1. In **Workers & Pages**, create a Pages project from the GitHub repository.
-2. Set **Root Directory** to `apps/web/asuna-web`.
-3. Use `npm run build` as the build command and `dist` as the output directory. `wrangler.toml` records the output directory for CLI-based deployment too.
-4. Add `VITE_API_BASE_URL` with the Render URL. Cloudflare Pages does not use the Vercel proxy.
-5. Deploy, then copy the `pages.dev` URL.
+---
 
-## 3. Lock down the API
+## 3. Why Requests Were Failing & How It Is Fixed
 
-In the Render service, set `CORS_ALLOW_ORIGINS` to the exact deployed frontend address or addresses, for example:
+| Issue | Root Cause | Solution |
+| :--- | :--- | :--- |
+| **Dead/Mismatched Backend URL** | Frontend was pointing to a hardcoded placeholder Render URL (`asuna-ai-7xaz.onrender.com`). | Updated `App.jsx` and `vercel.json` to prioritize `VITE_API_BASE_URL`. |
+| **CORS Blocked Requests** | Render backend was only allowing one specific hardcoded Vercel URL. | Updated `main.py` CORS middleware to automatically match Vercel subdomains (`*.vercel.app`) and custom `CORS_ALLOW_ORIGINS`. |
+| **Render Cold Start Delays** | Free Render instances sleep after 15 mins of inactivity, taking ~45s to respond when woken up. | Added automatic retries with user status feedback ("Server is waking up on Render (free tier), retrying…") in `App.jsx`. |
+| **Gemini API Error** | Key or model name mismatch caused silent failure. | Added model fallback (`gemini-2.0-flash` → `gemini-1.5-flash`) and descriptive HTTP error responses in `provider.py`. |
 
-```text
-https://your-project.vercel.app,https://your-project.pages.dev
-```
+---
 
-Save and redeploy Render. Do not use `*` with credentialed browser requests.
+## Verification & Testing
 
-## Verification
-
-1. Visit the Render `/` endpoint and confirm it returns `"status": "online"`.
-2. Visit the deployed frontend and send a question.
-3. Confirm the browser sends the request to the Render URL in Developer Tools → Network.
-4. Confirm camera and microphone consent prompts work over HTTPS.
-
-## Security notes
-
-- Keep `OPENAI_API_KEY` and `ASUNA_AGENT_TOKEN` only in Render secrets. Never add them to Git or a `VITE_*` variable.
-- The API has a small in-memory public rate limit as a first guard. Add real user authentication and persistent rate limiting before inviting broad public traffic.
-- Free Render web services can sleep after inactivity. Free frontend hosts do not run a 24/7 background assistant. Always-on wake word requires the native agent described in `docs/architecture/always-on-assistant.md`.
+1. Open your Render API URL directly in the browser (`https://your-render-app.onrender.com/health`). You should see:
+   ```json
+   {"status": "healthy", "provider_configured": true}
+   ```
+2. Open your Vercel URL, type a prompt (e.g. "Hello Asuna"), and click **Send**.
+3. If the server was sleeping, wait ~30 seconds for the first request while Render boots up. Subsequent requests will be instant!

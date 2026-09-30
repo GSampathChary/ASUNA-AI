@@ -9,19 +9,16 @@ const initialMessages = [{ sender: 'asuna', text: 'Namaste — I am ready when y
 // In production on Vercel, /api is proxied to Render by vercel.json. This
 // keeps the browser on one origin and prevents CORS from blocking chat.
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '')).replace(/\/$/, '');
-const RENDER_API_URL = 'https://asuna-ai-7xaz.onrender.com';
 const sleep = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 
 async function requestChat(payload, onRetry) {
-  // The relative endpoint is the normal Vercel route. The direct Render
-  // endpoint is a fallback while a free Render instance wakes up.
   const endpoints = API_BASE_URL
     ? [`${API_BASE_URL}/api/chat`]
-    : ['/api/chat', `${RENDER_API_URL}/api/chat`];
+    : ['/api/chat'];
   let lastError = new Error('The AI service is unavailable.');
 
   for (const endpoint of endpoints) {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
       try {
         const response = await fetch(endpoint, {
           method: 'POST',
@@ -35,8 +32,8 @@ async function requestChat(payload, onRetry) {
       } catch (error) {
         lastError = error;
       }
-      if (attempt < 2) {
-        onRetry?.(attempt + 1);
+      if (attempt < 3) {
+        onRetry?.(attempt + 1, attempt >= 1 ? 'Server is waking up on Render (free tier), retrying…' : 'Connecting to AI service…');
         await sleep((attempt + 1) * 3000);
       }
     }
@@ -58,6 +55,7 @@ export default function App() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [currentState, setCurrentState] = useState('IDLE');
+  const [statusText, setStatusText] = useState('Ready to help');
   const [installPrompt, setInstallPrompt] = useState(null);
   const messagesEndRef = useRef(null);
 
@@ -68,22 +66,31 @@ export default function App() {
     setInput('');
     setBusy(true);
     setCurrentState('THINKING');
+    setStatusText('Thinking…');
     try {
       const data = await requestChat(
         { message: text, history: messages.slice(-8).map(({ sender, text: item }) => ({ role: sender === 'asuna' ? 'assistant' : 'user', content: item })) },
-        () => setCurrentState('THINKING'),
+        (_attempt, msg) => {
+          setCurrentState('THINKING');
+          if (msg) setStatusText(msg);
+        },
       );
       const reply = data.reply || 'I could not generate a response.';
       setMessages((current) => [...current, { sender: 'asuna', text: reply, time: clock() }]);
       setCurrentState('SPEAKING');
+      setStatusText('Ready to help');
       speak(reply);
     } catch (error) {
-      const reply = `I could not answer because ${error.message || 'the AI service is unavailable'}. The Asuna API is not reachable yet; check that the Render service is live and its GEMINI_API_KEY is configured.`;
+      const reply = `I could not answer because ${error.message || 'the AI service is unavailable'}. The Asuna API is not reachable yet; check that your Render service is deployed and VITE_API_BASE_URL is configured in Vercel.`;
       setMessages((current) => [...current, { sender: 'asuna', text: reply, time: clock() }]);
       setCurrentState('ERROR');
+      setStatusText('Error connecting');
     } finally {
       setBusy(false);
-      window.setTimeout(() => setCurrentState('IDLE'), 1200);
+      window.setTimeout(() => {
+        setCurrentState('IDLE');
+        setStatusText('Ready to help');
+      }, 1500);
     }
   }, [busy, messages]);
 
@@ -131,7 +138,7 @@ export default function App() {
     </header>
     <div className="main-grid">
       <section className="chat-card" aria-label="Asuna conversation">
-        <div className="card-header"><div><span className="eyebrow">CONVERSATION</span><strong>{busy ? 'Thinking…' : 'Ready to help'}</strong></div><span className="capability">Private by default</span></div>
+        <div className="card-header"><div><span className="eyebrow">CONVERSATION</span><strong>{statusText}</strong></div><span className="capability">Private by default</span></div>
         <div className="messages">{messages.map((message, index) => <article className={`message ${message.sender === 'user' ? 'user' : ''}`} key={`${message.time}-${index}`}>{message.text}<time>{message.time}</time></article>)}<div ref={messagesEndRef} /></div>
         <form className="composer" onSubmit={(event) => { event.preventDefault(); send(input); }}><input value={input} onChange={(event) => setInput(event.target.value)} aria-label="Ask Asuna" placeholder="Ask anything…" /><button className="send-button" type="submit" disabled={busy}>Send</button></form>
       </section>
