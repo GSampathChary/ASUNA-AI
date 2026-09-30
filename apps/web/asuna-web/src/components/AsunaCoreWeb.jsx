@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { AsunaCoreEngine } from './AsunaCore';
 
-export const AsunaCoreWeb = ({ currentState, symbolType = 'diamond' }) => {
+export const AsunaCoreWeb = ({ currentState, symbolType = 'diamond', onClick, onWheel }) => {
   const mountRef = useRef(null);
   const engineRef = useRef(null);
 
@@ -31,10 +31,13 @@ export const AsunaCoreWeb = ({ currentState, symbolType = 'diamond' }) => {
   return (
     <div
       ref={mountRef}
+      onClick={onClick}
+      onWheel={onWheel}
       style={{
         width: '100%',
         height: '100%',
-        position: 'relative'
+        position: 'relative',
+        cursor: 'pointer'
       }}
     />
   );

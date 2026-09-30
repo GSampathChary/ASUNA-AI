@@ -58,6 +58,45 @@ class OpenAIResponsesProvider(BaseLLMProvider):
         return LLMResponse(content=result.get("output_text", "I could not generate a response."))
 
 
+class GeminiProvider(BaseLLMProvider):
+    """Server-side Gemini REST provider. The key remains in Render, never the browser."""
+
+    async def generate_response(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> LLMResponse:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise RuntimeError("GEMINI_API_KEY is not configured")
+        contents = []
+        for message in messages:
+            role = "model" if message.get("role") == "assistant" else "user"
+            contents.append({"role": role, "parts": [{"text": message.get("content", "")} ]})
+        model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        payload = json.dumps({
+            "systemInstruction": {"parts": [{"text": (
+                "You are Asuna, a helpful, accurate personal AI assistant. Answer naturally and clearly. "
+                "Never claim device control or sensor access unless a trusted paired device agent confirms it."
+            )}]},
+            "contents": contents,
+            "generationConfig": {"temperature": temperature},
+        }).encode("utf-8")
+
+        def request_response():
+            request = urllib.request.Request(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=45) as response:
+                return json.loads(response.read().decode("utf-8"))
+
+        try:
+            result = await asyncio.to_thread(request_response)
+            parts = result["candidates"][0]["content"]["parts"]
+            return LLMResponse(content="".join(part.get("text", "") for part in parts))
+        except (urllib.error.HTTPError, urllib.error.URLError, KeyError, IndexError) as error:
+            raise RuntimeError("Gemini could not generate a response. Check the Render key and model settings.") from error
+
+
 class LocalFallbackProvider(BaseLLMProvider):
     async def generate_response(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> LLMResponse:
         question = messages[-1]["content"] if messages else ""
@@ -68,4 +107,8 @@ class LocalFallbackProvider(BaseLLMProvider):
 
 
 def get_llm_provider() -> BaseLLMProvider:
-    return OpenAIResponsesProvider() if os.getenv("OPENAI_API_KEY") else LocalFallbackProvider()
+    if os.getenv("GEMINI_API_KEY"):
+        return GeminiProvider()
+    if os.getenv("OPENAI_API_KEY"):
+        return OpenAIResponsesProvider()
+    return LocalFallbackProvider()

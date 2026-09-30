@@ -67,7 +67,8 @@ async def chat(req: ChatRequest, request: Request):
         response = await get_llm_provider().generate_response(messages)
     except RuntimeError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
-    return {"reply": response.content, "provider": "openai" if __import__("os").getenv("OPENAI_API_KEY") else "local-fallback"}
+    provider = "gemini" if os.getenv("GEMINI_API_KEY") else "openai" if os.getenv("OPENAI_API_KEY") else "local-fallback"
+    return {"reply": response.content, "provider": provider}
 
 
 @app.post("/api/execute_action")

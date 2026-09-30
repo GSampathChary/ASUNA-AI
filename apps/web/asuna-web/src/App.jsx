@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AsunaCoreWeb } from './components/AsunaCoreWeb';
 import { CameraGesturePanel } from './components/CameraGesturePanel';
 import { useVoiceAssistant } from './hooks/useVoiceAssistant';
 import './asuna.css';
 
 const clock = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const initialMessages = [{ sender: 'asuna', text: 'Namaste — I am ready when you are. You can type, use voice, or enable camera gestures.', time: clock() }];
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://asuna-ai-6ivv.onrender.com').replace(/\/$/, '');
 
 function speak(text) {
   if (!('speechSynthesis' in window)) return;
@@ -20,6 +21,7 @@ export default function App() {
   const [input, setInput] = useState('');
   const [cameraOpen, setCameraOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [currentState, setCurrentState] = useState('IDLE');
   const messagesEndRef = useRef(null);
 
   const send = useCallback(async (rawText) => {
@@ -28,6 +30,7 @@ export default function App() {
     setMessages((current) => [...current, { sender: 'user', text, time: clock() }]);
     setInput('');
     setBusy(true);
+    setCurrentState('THINKING');
     try {
       const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -37,11 +40,16 @@ export default function App() {
       const data = await response.json();
       const reply = data.reply || 'I could not generate a response.';
       setMessages((current) => [...current, { sender: 'asuna', text: reply, time: clock() }]);
+      setCurrentState('SPEAKING');
       speak(reply);
     } catch {
-      const reply = 'I cannot reach the local AI service yet. Start the FastAPI backend, then add an AI provider key for full answers.';
+      const reply = 'I cannot reach the AI service. Check that Render is awake, GEMINI_API_KEY is saved in Render, and CORS_ALLOW_ORIGINS includes this website address.';
       setMessages((current) => [...current, { sender: 'asuna', text: reply, time: clock() }]);
-    } finally { setBusy(false); }
+      setCurrentState('ERROR');
+    } finally {
+      setBusy(false);
+      window.setTimeout(() => setCurrentState('IDLE'), 1200);
+    }
   }, [busy, messages]);
 
   const voice = useVoiceAssistant({ onCommand: send });
@@ -51,6 +59,11 @@ export default function App() {
     if (gesture === 'PINCH') send('select the current item');
     if (gesture === 'SCROLL') window.scrollBy({ top: 300, behavior: 'smooth' });
   }, [send]);
+
+  const reactToCore = useCallback((state, timeout = 550) => {
+    setCurrentState(state);
+    window.setTimeout(() => setCurrentState('IDLE'), timeout);
+  }, []);
 
   const voiceLabel = !voice.supported ? 'Voice unavailable in this browser' : voice.status === 'listening' ? 'Listening — say “Asuna” then your request' : voice.status === 'permission-denied' ? 'Microphone permission was denied' : 'Voice is off';
 
@@ -67,7 +80,8 @@ export default function App() {
       </section>
       <section className="stage" aria-label="Asuna controls">
         {cameraOpen && <CameraGesturePanel onGesture={onGesture} onClose={() => setCameraOpen(false)} />}
-        <div className="assistant-status"><div className={`orb ${voice.status === 'listening' ? 'listening' : ''}`} aria-hidden="true" /><div className="assistant-copy"><span className="eyebrow">YOUR MULTIMODAL ASSISTANT</span><h1>Ask naturally.<br />Act deliberately.</h1><p>{voice.transcript || voiceLabel}</p><div className="control-row"><button className={`primary-button ${voice.status === 'listening' ? 'active' : ''}`} disabled={!voice.supported} onClick={voice.status === 'listening' ? voice.stop : voice.start}>{voice.status === 'listening' ? '■ Stop listening' : '🎙 Start voice'}</button><button className="outline-button" onClick={() => setCameraOpen(true)}>✋ Hand gestures</button></div><p className="capability">Browser: voice and camera only · Desktop/Android agent: device actions after pairing</p></div></div>
+        <div className="core-visual"><AsunaCoreWeb currentState={voice.status === 'listening' ? 'LISTENING' : currentState} symbolType="diamond" onClick={() => reactToCore('TOUCH_BURST')} onWheel={() => reactToCore('SCROLLING', 700)} /></div>
+        <div className="assistant-status"><div className="assistant-copy"><span className="eyebrow">YOUR MULTIMODAL ASSISTANT</span><h1>Ask naturally.<br />Act deliberately.</h1><p>{voice.transcript || voiceLabel}</p><div className="control-row"><button className={`primary-button ${voice.status === 'listening' ? 'active' : ''}`} disabled={!voice.supported} onClick={voice.status === 'listening' ? voice.stop : voice.start}>{voice.status === 'listening' ? '■ Stop listening' : '🎙 Start voice'}</button><button className="outline-button" onClick={() => setCameraOpen(true)}>✋ Hand gestures</button></div><p className="capability">Move the pointer, tap the diamond, or scroll over it to interact.</p></div></div>
         <p className="privacy-note">You can stop voice or camera at any time.<br />Asuna never claims access it does not have.</p>
       </section>
     </div>

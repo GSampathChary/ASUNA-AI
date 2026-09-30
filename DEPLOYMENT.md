@@ -8,7 +8,7 @@ The repository is configured for a static Vite frontend and a FastAPI API.
 2. Connect `GSampathChary/ASUNA-AI` and select the `main` branch.
 3. Render reads `render.yaml` and proposes the `asuna-ai-api` service.
 4. Enter values for the requested secrets:
-   - `OPENAI_API_KEY`: server-only OpenAI API key.
+   - `GEMINI_API_KEY`: server-only Gemini API key (recommended if using Gemini). Configure `OPENAI_API_KEY` instead only if using OpenAI.
    - `ASUNA_AGENT_TOKEN`: a long random value reserved for a later paired desktop/mobile agent.
    - `CORS_ALLOW_ORIGINS`: leave blank for the first deploy, then set it after the frontend URL exists.
 5. Create the Blueprint and wait for the health check to pass.
