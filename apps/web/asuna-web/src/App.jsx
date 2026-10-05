@@ -79,6 +79,7 @@ export default function App() {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState('');
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraPose, setCameraPose] = useState(null);
   const [busy, setBusy] = useState(false);
   const [currentState, setCurrentState] = useState('IDLE');
   const [statusText, setStatusText] = useState('JARVIS online');
@@ -89,6 +90,7 @@ export default function App() {
   const [sessionToken, setSessionToken] = useState('');
   const [installPrompt, setInstallPrompt] = useState(null);
   const messagesEndRef = useRef(null);
+
 
   const deviceIdRef = useRef(sessionStorage.getItem('asuna_device_id') || `web_${crypto.randomUUID()}`);
   useEffect(() => { sessionStorage.setItem('asuna_device_id', deviceIdRef.current); }, []);
@@ -264,9 +266,9 @@ export default function App() {
         <form className="composer" onSubmit={(event) => { event.preventDefault(); send(input); }}><input value={input} onChange={(event) => setInput(event.target.value)} aria-label="Ask JARVIS" placeholder="Say 'Jarvis, open YouTube on my laptop'…" /><button className="send-button" type="submit" disabled={busy}>{busy ? 'Processing…' : 'Send'}</button></form>
       </section>
       <section className="stage" aria-label="JARVIS controls">
-        {cameraOpen && <CameraGesturePanel onGesture={onGesture} onClose={() => setCameraOpen(false)} />}
-        <div className="core-visual"><AsunaCoreWeb currentState={voice.status === 'listening' ? 'LISTENING' : currentState} symbolType="diamond" onClick={() => reactToCore('TOUCH_BURST')} onWheel={() => reactToCore('SCROLLING', 700)} /></div>
-        <div className="assistant-status"><div className="assistant-copy"><span className="eyebrow">TONY STARK'S ARTIFICIAL INTELLIGENCE</span><h1>Ask naturally.<br />Control cross-device.</h1><p>{voice.transcript || voiceLabel}</p><div className="control-row"><button className={`primary-button ${voice.status === 'listening' ? 'active' : ''}`} disabled={!voice.supported} onClick={voice.status === 'listening' ? voice.stop : voice.start}>{voice.status === 'listening' ? '■ Stop listening' : '🎙 Start JARVIS voice'}</button><button className="outline-button" onClick={() => setCameraOpen(true)}>✋ Hand gestures</button></div><p className="capability">Log in with the same email on Laptop & Mobile to control both devices seamlessly.</p></div></div>
+        {cameraOpen && <CameraGesturePanel onGesture={onGesture} onCameraPose={setCameraPose} onClose={() => setCameraOpen(false)} />}
+        <div className="core-visual"><AsunaCoreWeb currentState={voice.status === 'listening' ? 'LISTENING' : currentState} cameraPose={cameraPose} symbolType="humanoid" onClick={() => reactToCore('TOUCH_BURST')} onWheel={() => reactToCore('SCROLLING', 700)} /></div>
+        <div className="assistant-status"><div className="assistant-copy"><span className="eyebrow">TONY STARK'S ARTIFICIAL INTELLIGENCE</span><h1>Ask naturally.<br />Control cross-device.</h1><p>{voice.transcript || voiceLabel}</p><div className="control-row"><button className={`primary-button ${voice.status === 'listening' ? 'active' : ''}`} disabled={!voice.supported} onClick={voice.status === 'listening' ? voice.stop : voice.start}>{voice.status === 'listening' ? '■ Stop listening' : '🎙 Start JARVIS voice'}</button><button className="outline-button" onClick={() => setCameraOpen(true)}>✋ Camera tracking</button></div><p className="capability">Log in with the same email on Laptop & Mobile to control both devices seamlessly.</p></div></div>
         <p className="privacy-note">Remote execution requires a paired device.<br />Account: {userEmail}.</p>
       </section>
     </div>

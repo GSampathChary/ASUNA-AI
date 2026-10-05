@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { AsunaCoreEngine } from './AsunaCore';
 
-export const AsunaCoreWeb = ({ currentState, symbolType = 'diamond', onClick, onWheel }) => {
+export const AsunaCoreWeb = ({ currentState, cameraPose, symbolType = 'humanoid', onClick, onWheel }) => {
   const mountRef = useRef(null);
   const engineRef = useRef(null);
 
@@ -27,6 +27,12 @@ export const AsunaCoreWeb = ({ currentState, symbolType = 'diamond', onClick, on
       engineRef.current.setState(currentState);
     }
   }, [currentState]);
+
+  useEffect(() => {
+    if (engineRef.current && cameraPose) {
+      engineRef.current.setCameraPose(cameraPose);
+    }
+  }, [cameraPose]);
 
   return (
     <div

@@ -43,8 +43,8 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
   String _lastCommand = 'Say "Asuna YouTube open cheyyi" or use gestures...';
   final List<String> _eventLog = [
     'System Initialized',
-    'Asuna Core 3D Red & Gold Engine: Active',
-    'Gesture Engine: Ready'
+    'Asuna 3D Cybernetic Man Engine: Active',
+    'Camera & Gesture Tracking: Ready'
   ];
   late final RemoteAgentService _remoteAgent;
 
