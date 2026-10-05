@@ -92,4 +92,29 @@ python -m agents.windows.main
 
 For deployed services use `wss://your-render-domain/ws` for `ASUNA_WS_URL`. Render free instances may sleep, which makes persistent WebSocket device routing unsuitable; use an always-on WebSocket-capable host for dependable remote control.
 
-Supported Windows actions are opening YouTube/browser and exact system volume (requires `pycaw`, installed through the backend requirements on Windows). A browser running on a phone becomes the mobile agent when paired. It can open web destinations and can toggle the torch only on Android browsers that expose the secure-context camera torch API. A web app cannot universally control iOS flashlight, phone volume, calls, or native apps.
+Supported Windows actions are opening YouTube/browser and exact system volume (requires `pycaw`, installed through the backend requirements on Windows).
+
+### Android companion app (recommended)
+
+The native Android companion can receive paired actions for flashlight, media volume, and launching YouTube or Chrome. It must remain open in the foreground while serving as an agent; Android does not permit a normal app to keep a permanent network connection in the background without a user-visible foreground service.
+
+```powershell
+cd E:\AI-Portfolio\Projects\asuna-ai\apps\mobile\flutter
+flutter doctor
+flutter pub get
+flutter devices
+flutter run --release
+```
+
+Enable **Developer options → USB debugging** on the Android phone before using `flutter run`; accept the USB-debugging prompt when it appears. On first launch, tap the link icon, enter `wss://your-backend-domain/ws`, your account email, and your pairing token. Approve camera permission the first time you use flashlight. Use a deployed `wss://` endpoint for a real phone; `localhost` points to the phone itself, not your laptop.
+
+Once both devices show as paired, use the web HUD or mobile app with the same account email:
+
+```text
+Jarvis, open YouTube on my laptop
+Jarvis, set volume to 80% on my PC
+Jarvis, turn on flashlight on my mobile
+Jarvis, open YouTube on my mobile
+```
+
+The browser mobile agent remains a convenience fallback for opening web destinations and may control the torch only on compatible Android browsers. It cannot universally control iOS flashlight, phone volume, calls, or native apps.

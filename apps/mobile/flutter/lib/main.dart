@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'asuna_core/asuna_core_widget.dart';
+import 'services/native_device_service.dart';
+import 'services/remote_agent_service.dart';
 
 void main() {
   runApp(const AsunaApp());
@@ -44,6 +46,67 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
     'Asuna Core 3D Red & Gold Engine: Active',
     'Gesture Engine: Ready'
   ];
+  late final RemoteAgentService _remoteAgent;
+
+  @override
+  void initState() {
+    super.initState();
+    _remoteAgent = RemoteAgentService(NativeDeviceService())
+      ..onStatus = (status) {
+        if (mounted) setState(() => _eventLog.insert(0, 'Remote agent: $status'));
+      }
+      ..onEvent = (event) {
+        if (mounted) setState(() => _eventLog.insert(0, event));
+      };
+  }
+
+  @override
+  void dispose() {
+    _remoteAgent.disconnect();
+    super.dispose();
+  }
+
+  Future<void> _showPairingDialog() async {
+    final gateway = TextEditingController(text: 'wss://your-backend.example/ws');
+    final email = TextEditingController();
+    final token = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Pair Android device'),
+        content: SingleChildScrollView(child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: gateway, decoration: const InputDecoration(labelText: 'Gateway WebSocket URL')),
+            TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Account email')),
+            TextField(controller: token, obscureText: true, decoration: const InputDecoration(labelText: 'Pairing token')),
+          ],
+        )),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () async {
+              try {
+                await _remoteAgent.connect(
+                  websocketUrl: gateway.text.trim(),
+                  email: email.text.trim(),
+                  pairingToken: token.text.trim(),
+                  deviceId: 'android_${DateTime.now().millisecondsSinceEpoch}',
+                );
+                if (context.mounted) Navigator.pop(context);
+              } catch (error) {
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+              }
+            },
+            child: const Text('Pair'),
+          ),
+        ],
+      ),
+    );
+    gateway.dispose();
+    email.dispose();
+    token.dispose();
+  }
 
   void _toggleListening() {
     setState(() {
@@ -98,7 +161,7 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
             Icon(Icons.diamond_outlined, color: Color(0xFFFFD700)),
             SizedBox(width: 8),
             Text(
-              'ASUNA AI',
+              'JARVIS ANDROID',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.5,
@@ -110,6 +173,11 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
         backgroundColor: const Color(0xFF1A080C),
         elevation: 4,
         actions: [
+          IconButton(
+            icon: Icon(_remoteAgent.status == 'Paired and online' ? Icons.link : Icons.link_off, color: const Color(0xFFFFD700)),
+            onPressed: _showPairingDialog,
+            tooltip: 'Pair cross-device control',
+          ),
           IconButton(
             icon: Icon(
               _gestureMode == 'GESTURE_MODE' ? Icons.pan_tool : Icons.pan_tool_outlined,

@@ -1,0 +1,20 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace "com.asunaai.asuna_mobile"
+    compileSdk flutter.compileSdkVersion
+
+    defaultConfig {
+        applicationId "com.asunaai.asuna_mobile"
+        minSdk 23
+        targetSdk flutter.targetSdkVersion
+        versionCode flutter.versionCode
+        versionName flutter.versionName
+    }
+}
+
+flutter { source "../.." }
