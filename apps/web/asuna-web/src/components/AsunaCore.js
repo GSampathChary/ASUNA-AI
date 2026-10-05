@@ -1,7 +1,8 @@
 /**
- * Asuna 3D Cybernetic Man Core Engine (Three.js / WebGL)
- * Crimson Red & Pure Platinum White Aesthetic Theme
- * Real-Time Mouse & Camera Head Tracking + Speech Lip-Sync
+ * Asuna 3D Character & Interactive Core Engine (Three.js / WebGL)
+ * Model: Asuna Yuuki (Sword Art Online - Knights of the Blood Oath)
+ * Features: Real-time Cursor Eyeball Tracking, Dynamic Hair Sway Physics,
+ *           Knights of the Blood Oath Armor, Multi-Expression Click Reactions & Burst Particles
  */
 
 import * as THREE from 'three';
@@ -12,7 +13,7 @@ export class AsunaCoreEngine {
         this.state = 'IDLE';
         this.symbolType = symbolType;
 
-        // Head tracking rotations (Pitch, Yaw, Roll)
+        // Head & Eyeball Tracking Variables
         this.targetHeadRotation = { pitch: 0, yaw: 0, roll: 0 };
         this.currentHeadRotation = { pitch: 0, yaw: 0, roll: 0 };
         this.targetEyeAim = { x: 0, y: 0 };
@@ -20,9 +21,26 @@ export class AsunaCoreEngine {
         this.cameraOverride = false;
         this.cameraOverrideTimer = null;
 
+        // Expression & Interactive States
+        // Expressions: 'HAPPY', 'WINK', 'DETERMINED', 'BLUSH', 'SURPRISED'
+        this.expressions = ['HAPPY', 'WINK', 'DETERMINED', 'BLUSH', 'SURPRISED'];
+        this.expressionIndex = 0;
+        this.currentExpression = 'HAPPY';
+
+        // Blinking system
+        this.blinkProgress = 0;
+        this.isBlinking = false;
+        this.nextBlinkTime = 2.0 + Math.random() * 3.0;
+
+        // Click feedback & burst dynamics
+        this.vibrationIntensity = 0.0;
+        this.clickPulse = 0.0;
+        this.burstParticles = [];
+
+        // Three.js Scene Setup
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(
-            55,
+            52,
             containerElement.clientWidth / containerElement.clientHeight,
             0.1,
             100
@@ -34,7 +52,6 @@ export class AsunaCoreEngine {
             alpha: true,
             powerPreference: "high-performance"
         });
-        
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
         this.renderer.setSize(containerElement.clientWidth, containerElement.clientHeight);
         containerElement.appendChild(this.renderer.domElement);
@@ -42,25 +59,10 @@ export class AsunaCoreEngine {
         this.coreGroup = new THREE.Group();
         this.scene.add(this.coreGroup);
 
-        this.buildHumanoidGeometry();
-
-        // Ambient Light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.1);
-        this.scene.add(ambientLight);
-
-        // Directional Light for Metallic Sculpting
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-        dirLight.position.set(3, 4, 5);
-        this.scene.add(dirLight);
-
-        // Crimson Red Accent Light
-        const crimsonLight = new THREE.PointLight(0xff1e42, 3.0, 12);
-        crimsonLight.position.set(-3, -2, 4);
-        this.scene.add(crimsonLight);
+        this.buildAsunaCharacterGeometry();
+        this.setupLighting();
 
         this.clock = new THREE.Clock();
-        this.vibrationIntensity = 0.0;
-        this.clickPulse = 0.0;
 
         this.onPointerMove = this.onPointerMove.bind(this);
         this.onPointerDown = this.onPointerDown.bind(this);
@@ -72,163 +74,329 @@ export class AsunaCoreEngine {
         this.animate();
     }
 
-    buildHumanoidGeometry() {
+    setupLighting() {
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        this.scene.add(ambientLight);
+
+        const mainDirLight = new THREE.DirectionalLight(0xfffaed, 1.6);
+        mainDirLight.position.set(3, 4, 5);
+        this.scene.add(mainDirLight);
+
+        const rimLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        rimLight.position.set(-3, 3, -4);
+        this.scene.add(rimLight);
+
+        // Crimson Knights Accent Light
+        this.crimsonLight = new THREE.PointLight(0xff2a4b, 3.5, 12);
+        this.crimsonLight.position.set(-2.5, -1.5, 3.5);
+        this.scene.add(this.crimsonLight);
+    }
+
+    buildAsunaCharacterGeometry() {
         while (this.coreGroup.children.length > 0) {
             this.coreGroup.remove(this.coreGroup.children[0]);
         }
 
-        // Parent Group for Entire Man Figure
         this.manGroup = new THREE.Group();
-        this.manGroup.position.y = -0.2;
+        this.manGroup.position.y = -0.15;
         this.coreGroup.add(this.manGroup);
 
-        // 1. Head Group (Rotates and tilts towards mouse/camera)
+        // -------------------------------------------------------------
+        // 1. HEAD & ANIME FACE STRUCTURE
+        // -------------------------------------------------------------
         this.headGroup = new THREE.Group();
-        this.headGroup.position.set(0, 0.45, 0);
+        this.headGroup.position.set(0, 0.50, 0);
         this.manGroup.add(this.headGroup);
 
-        // Warm ceramic faceplate with auburn hair creates an anime-inspired robotic avatar.
-        const skullGeo = new THREE.IcosahedronGeometry(0.85, 2);
-        skullGeo.scale(0.88, 1.15, 0.95);
-        const skullMat = new THREE.MeshStandardMaterial({
-            color: 0xf6c9af,
-            roughness: 0.48,
-            metalness: 0.28,
-            emissive: 0x2a0a10,
-            emissiveIntensity: 0.25
+        // Face / Head Base Mesh (Porcelain Peach Anime Skin Tone)
+        const skullGeo = new THREE.IcosahedronGeometry(0.85, 3);
+        skullGeo.scale(0.84, 1.14, 0.92);
+        const skinMat = new THREE.MeshStandardMaterial({
+            color: 0xfde8db,
+            roughness: 0.55,
+            metalness: 0.08,
+            emissive: 0x3d1418,
+            emissiveIntensity: 0.22
         });
-        this.skullMesh = new THREE.Mesh(skullGeo, skullMat);
+        this.skullMesh = new THREE.Mesh(skullGeo, skinMat);
         this.headGroup.add(this.skullMesh);
 
-        const hairMat = new THREE.MeshStandardMaterial({ color: 0x9d4f32, roughness: 0.38, metalness: 0.25, emissive: 0x210507 });
-        this.hairGroup = new THREE.Group();
-        const fringe = new THREE.Mesh(new THREE.SphereGeometry(0.76, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.45), hairMat);
-        fringe.scale.set(1.0, 1.08, 1.02);
-        fringe.position.set(0, 0.38, 0.08);
-        this.hairGroup.add(fringe);
-        [-1, 1].forEach((side) => {
-            const lock = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.82, 8, 12), hairMat);
-            lock.position.set(side * 0.72, -0.18, 0.10);
-            lock.rotation.z = side * -0.16;
-            this.hairGroup.add(lock);
-        });
-        this.headGroup.add(this.hairGroup);
+        // Delicate Anime Chin & Jawline
+        const chinGeo = new THREE.ConeGeometry(0.48, 0.55, 12);
+        chinGeo.scale(0.9, 0.7, 0.75);
+        const chinMesh = new THREE.Mesh(chinGeo, skinMat);
+        chinMesh.rotation.x = Math.PI;
+        chinMesh.position.set(0, -0.52, 0.22);
+        this.headGroup.add(chinMesh);
 
-        // Connected lines make the holographic structure easy to read from a distance.
-        const facialGridGeo = new THREE.IcosahedronGeometry(0.88, 2);
-        facialGridGeo.scale(0.9, 1.17, 0.97);
-        const facialGridMat = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.28
-        });
-        this.facialGridMesh = new THREE.Mesh(facialGridGeo, facialGridMat);
-        this.headGroup.add(this.facialGridMesh);
-
-        // Jawbone Mesh (Articulates when speaking)
-        const jawGeo = new THREE.ConeGeometry(0.68, 0.95, 5);
-        jawGeo.scale(1.0, 0.7, 0.85);
-        const jawMat = new THREE.MeshStandardMaterial({
-            color: 0xff1e42,
-            roughness: 0.3,
-            metalness: 0.7,
-            emissive: 0x770016
-        });
-        this.jawMesh = new THREE.Mesh(jawGeo, jawMat);
-        this.jawMesh.rotation.x = Math.PI;
-        this.jawMesh.position.set(0, -0.45, 0.1);
-        this.headGroup.add(this.jawMesh);
-
-        // Large ocular assemblies track the cursor independently of head movement.
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfffbf5 });
-        const irisMat = new THREE.MeshBasicMaterial({ color: 0xa86a35 });
-        const pupilMat = new THREE.MeshBasicMaterial({ color: 0x22100b });
-        const createEye = (side) => {
-            const eyeGroup = new THREE.Group();
-            eyeGroup.position.set(side * 0.27, 0.15, 0.72);
-            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 20, 20), eyeMat);
-            eye.scale.set(1, 1.2, 0.65);
-            const iris = new THREE.Mesh(new THREE.SphereGeometry(0.078, 16, 16), irisMat);
-            iris.scale.z = 0.3;
-            iris.position.z = 0.10;
-            const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.037, 12, 12), pupilMat);
-            pupil.scale.z = 0.25;
-            pupil.position.z = 0.125;
-            eyeGroup.add(eye, iris, pupil);
-            this.headGroup.add(eyeGroup);
-            return eyeGroup;
-        };
-        this.leftEyeGroup = createEye(-1);
-        this.rightEyeGroup = createEye(1);
-
-        // Brow Ridge & Nose Structure
-        const browGeo = new THREE.BoxGeometry(0.72, 0.08, 0.22);
-        const browMat = new THREE.MeshStandardMaterial({ color: 0xff1e42, metalness: 0.8, roughness: 0.2 });
-        const browMesh = new THREE.Mesh(browGeo, browMat);
-        browMesh.position.set(0, 0.26, 0.70);
-        this.headGroup.add(browMesh);
-        this.browMesh = browMesh;
-
-        const noseGeo = new THREE.BoxGeometry(0.12, 0.32, 0.25);
-        const noseMesh = new THREE.Mesh(noseGeo, browMat);
-        noseMesh.position.set(0, 0.02, 0.75);
+        // Cute Nose Tip
+        const noseGeo = new THREE.ConeGeometry(0.045, 0.12, 8);
+        const noseMesh = new THREE.Mesh(noseGeo, skinMat);
+        noseMesh.rotation.x = -Math.PI / 4;
+        noseMesh.position.set(0, -0.04, 0.78);
         this.headGroup.add(noseMesh);
 
-        // 2. Neck & Upper Torso Harness (Base Structure)
+        // Cheeks & Rosy Blush Meshes
+        this.blushGroup = new THREE.Group();
+        const blushMat = new THREE.MeshBasicMaterial({
+            color: 0xff6688,
+            transparent: true,
+            opacity: 0.35
+        });
+        [-1, 1].forEach(side => {
+            const blush = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.18, 8, 12), blushMat);
+            blush.rotation.z = Math.PI / 2 + side * 0.15;
+            blush.position.set(side * 0.36, -0.12, 0.70);
+            this.blushGroup.add(blush);
+        });
+        this.headGroup.add(this.blushGroup);
+
+        // Morpable Anime Mouth (Smile, Open, Gasp)
+        this.mouthGroup = new THREE.Group();
+        this.mouthGroup.position.set(0, -0.32, 0.74);
+
+        const mouthLineMat = new THREE.MeshBasicMaterial({ color: 0x8a2b37 });
+        this.defaultSmileMesh = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.02, 8, 16, Math.PI * 0.8), mouthLineMat);
+        this.defaultSmileMesh.rotation.x = Math.PI / 1.1;
+        this.mouthGroup.add(this.defaultSmileMesh);
+
+        // Open mouth for Speaking / Gasping
+        const innerMouthMat = new THREE.MeshBasicMaterial({ color: 0xc93648 });
+        this.openMouthMesh = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.7), innerMouthMat);
+        this.openMouthMesh.scale.set(1.1, 0.8, 0.4);
+        this.openMouthMesh.rotation.x = Math.PI / 2;
+        this.openMouthMesh.visible = false;
+        this.mouthGroup.add(this.openMouthMesh);
+
+        this.headGroup.add(this.mouthGroup);
+
+        // Eyebrows (Dynamic tilt based on expression & cursor)
+        const browMat = new THREE.MeshBasicMaterial({ color: 0x8f4626 });
+        const createBrow = (side) => {
+            const brow = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.03, 0.04), browMat);
+            brow.position.set(side * 0.28, 0.32, 0.73);
+            brow.rotation.z = side * -0.08;
+            this.headGroup.add(brow);
+            return brow;
+        };
+        this.leftBrow = createBrow(-1);
+        this.rightBrow = createBrow(1);
+
+        // -------------------------------------------------------------
+        // 2. HIGH-FIDELITY ANIME EYES & EYEBALL CURSOR TRACKING
+        // -------------------------------------------------------------
+        const eyelinerMat = new THREE.MeshBasicMaterial({ color: 0x1c0c08 });
+        const scleraMat = new THREE.MeshBasicMaterial({ color: 0xfffcf7 });
+        const irisMat = new THREE.MeshStandardMaterial({
+            color: 0xb86928,
+            roughness: 0.2,
+            metalness: 0.1,
+            emissive: 0x5a2d0b,
+            emissiveIntensity: 0.4
+        });
+        const pupilMat = new THREE.MeshBasicMaterial({ color: 0x1f0b05 });
+        const catchlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+        const createAnimeEyeAssembly = (side) => {
+            const eyeGroup = new THREE.Group();
+            eyeGroup.position.set(side * 0.28, 0.14, 0.71);
+
+            // Outer Eyeliner Frame
+            const topLash = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.045, 0.06), eyelinerMat);
+            topLash.position.set(0, 0.15, 0.04);
+            topLash.rotation.z = side * -0.12;
+
+            const bottomLash = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.025, 0.04), eyelinerMat);
+            bottomLash.position.set(0, -0.15, 0.03);
+
+            // Eyeball Container (Pivots & Tracks Cursor)
+            const eyeball = new THREE.Group();
+
+            // Sclera (White Eye Base)
+            const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 20), scleraMat);
+            sclera.scale.set(1.0, 1.25, 0.7);
+
+            // Hazel-Amber Iris
+            const iris = new THREE.Mesh(new THREE.SphereGeometry(0.092, 20, 20), irisMat);
+            iris.scale.set(1.0, 1.15, 0.28);
+            iris.position.z = 0.09;
+
+            // Deep Inner Pupil
+            const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.042, 14, 14), pupilMat);
+            pupil.scale.set(1.0, 1.1, 0.25);
+            pupil.position.z = 0.115;
+
+            // Shiny Specular Catchlight Highlights (Anime Twinkle)
+            const sparkle1 = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 10), catchlightMat);
+            sparkle1.position.set(-0.028, 0.035, 0.122);
+
+            const sparkle2 = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 8), catchlightMat);
+            sparkle2.position.set(0.025, -0.03, 0.120);
+
+            eyeball.add(sclera, iris, pupil, sparkle1, sparkle2);
+            eyeGroup.add(topLash, bottomLash, eyeball);
+
+            this.headGroup.add(eyeGroup);
+            return { eyeGroup, eyeball, topLash };
+        };
+
+        this.leftEye = createAnimeEyeAssembly(-1);
+        this.rightEye = createAnimeEyeAssembly(1);
+
+        // Wink Sparkle Star Mesh over left eye when winking
+        const starShape = new THREE.Shape();
+        for (let i = 0; i < 8; i++) {
+            const r = i % 2 === 0 ? 0.12 : 0.04;
+            const a = (i / 8) * Math.PI * 2;
+            if (i === 0) starShape.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+            else starShape.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        const starGeo = new THREE.ShapeGeometry(starShape);
+        const starMat = new THREE.MeshBasicMaterial({ color: 0xffea00, side: THREE.DoubleSide });
+        this.winkStarMesh = new THREE.Mesh(starGeo, starMat);
+        this.winkStarMesh.position.set(-0.28, 0.14, 0.80);
+        this.winkStarMesh.visible = false;
+        this.headGroup.add(this.winkStarMesh);
+
+        // -------------------------------------------------------------
+        // 3. ASUNA'S SIGNATURE CHESTNUT / AUBURN HAIR SYSTEM
+        // -------------------------------------------------------------
+        this.hairGroup = new THREE.Group();
+        const hairMat = new THREE.MeshStandardMaterial({
+            color: 0x9b4b2a,
+            roughness: 0.42,
+            metalness: 0.18,
+            emissive: 0x2b0d06,
+            emissiveIntensity: 0.3
+        });
+
+        // Swept Front Bangs (Fringe)
+        this.fringeGroup = new THREE.Group();
+        const mainBangs = new THREE.Mesh(new THREE.SphereGeometry(0.82, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.46), hairMat);
+        mainBangs.scale.set(1.02, 1.08, 1.04);
+        mainBangs.position.set(0, 0.36, 0.06);
+        this.fringeGroup.add(mainBangs);
+
+        // Individual Bang Locks framing forehead
+        [-0.32, -0.12, 0.12, 0.32].forEach((offset, idx) => {
+            const bangTip = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.42, 8), hairMat);
+            bangTip.rotation.x = Math.PI - 0.2;
+            bangTip.rotation.z = offset * -0.4;
+            bangTip.position.set(offset, 0.32, 0.74 - Math.abs(offset) * 0.1);
+            this.fringeGroup.add(bangTip);
+        });
+        this.hairGroup.add(this.fringeGroup);
+
+        // Signature Long Front Side Locks (Resting over shoulders)
+        this.sideLocksGroup = new THREE.Group();
+        [-1, 1].forEach((side) => {
+            const sideLock = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.95, 8, 12), hairMat);
+            sideLock.position.set(side * 0.68, -0.28, 0.22);
+            sideLock.rotation.z = side * -0.14;
+            sideLock.rotation.x = 0.15;
+            this.sideLocksGroup.add(sideLock);
+        });
+        this.hairGroup.add(this.sideLocksGroup);
+
+        // Signature Half-Up Side Braids (Temple twists gathered in back)
+        this.braidsGroup = new THREE.Group();
+        [-1, 1].forEach((side) => {
+            const braid = new THREE.Group();
+            for (let b = 0; b < 5; b++) {
+                const braidSegment = new THREE.Mesh(new THREE.SphereGeometry(0.065 - b * 0.006, 10, 10), hairMat);
+                braidSegment.scale.set(1.2, 0.7, 0.8);
+                braidSegment.position.set(side * (0.64 - b * 0.08), 0.22 - b * 0.05, 0.35 - b * 0.14);
+                braidSegment.rotation.z = side * 0.3;
+                braid.add(braidSegment);
+            }
+            this.braidsGroup.add(braid);
+        });
+        this.hairGroup.add(this.braidsGroup);
+
+        // Flowing Long Back Hair Curtain
+        this.backHairGroup = new THREE.Group();
+        const backHairBase = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.92, 1.4, 16, 1, true, Math.PI * 0.6, Math.PI * 0.8), hairMat);
+        backHairBase.position.set(0, -0.45, -0.28);
+        backHairBase.rotation.y = Math.PI;
+        this.backHairGroup.add(backHairBase);
+        this.hairGroup.add(this.backHairGroup);
+
+        this.headGroup.add(this.hairGroup);
+
+        // -------------------------------------------------------------
+        // 4. KNIGHTS OF THE BLOOD OATH OUTFIT & HARNESS
+        // -------------------------------------------------------------
         this.torsoGroup = new THREE.Group();
         this.manGroup.add(this.torsoGroup);
 
-        const neckGeo = new THREE.CylinderGeometry(0.28, 0.38, 0.55, 16);
-        const neckMat = new THREE.MeshStandardMaterial({ color: 0x111118, metalness: 0.9, roughness: 0.3 });
-        const neckMesh = new THREE.Mesh(neckGeo, neckMat);
-        neckMesh.position.set(0, -0.15, -0.05);
+        // High White Collar with Red Edging
+        const collarMat = new THREE.MeshStandardMaterial({ color: 0xfaf8f5, roughness: 0.3, metalness: 0.2 });
+        const redTrimMat = new THREE.MeshBasicMaterial({ color: 0xd91e42 });
+        const silverMat = new THREE.MeshStandardMaterial({ color: 0xd0d5dd, roughness: 0.25, metalness: 0.85 });
+
+        const neckGeo = new THREE.CylinderGeometry(0.26, 0.34, 0.48, 16);
+        const neckMesh = new THREE.Mesh(neckGeo, skinMat);
+        neckMesh.position.set(0, -0.14, -0.02);
         this.torsoGroup.add(neckMesh);
 
-        const shouldersGeo = new THREE.BoxGeometry(2.1, 0.45, 0.9);
-        const shouldersMat = new THREE.MeshStandardMaterial({ color: 0x1f1f2e, metalness: 0.8, roughness: 0.3 });
-        const shouldersMesh = new THREE.Mesh(shouldersGeo, shouldersMat);
-        shouldersMesh.position.set(0, -0.65, -0.1);
-        this.torsoGroup.add(shouldersMesh);
+        const collarMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.44, 0.30, 16), collarMat);
+        collarMesh.position.set(0, -0.28, 0.02);
+        this.torsoGroup.add(collarMesh);
 
-        const suitMat = new THREE.MeshStandardMaterial({ color: 0xf4f1eb, metalness: 0.52, roughness: 0.35 });
-        const redTrimMat = new THREE.MeshBasicMaterial({ color: 0xc91f42 });
-        const chest = new THREE.Mesh(new THREE.SphereGeometry(0.66, 20, 16), suitMat);
-        chest.scale.set(1.18, 0.68, 0.52);
-        chest.position.set(0, -1.03, 0.04);
-        this.torsoGroup.add(chest);
-        const chestTrim = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.04, 0.05), redTrimMat);
-        chestTrim.position.set(0, -1.0, 0.38);
-        this.torsoGroup.add(chestTrim);
+        const collarRedTrim = new THREE.Mesh(new THREE.TorusGeometry(0.37, 0.022, 10, 24), redTrimMat);
+        collarRedTrim.rotation.x = Math.PI / 2;
+        collarRedTrim.position.set(0, -0.15, 0.02);
+        this.torsoGroup.add(collarRedTrim);
 
-        const collarRingGeo = new THREE.TorusGeometry(1.05, 0.04, 12, 32);
-        const collarRingMat = new THREE.MeshBasicMaterial({ color: 0xff1e42 });
-        const collarRing = new THREE.Mesh(collarRingGeo, collarRingMat);
-        collarRing.rotation.x = Math.PI / 2.2;
-        collarRing.position.set(0, -0.42, 0.0);
-        this.torsoGroup.add(collarRing);
+        // Knights Cross Pin Emblem on Collar
+        const crossGroup = new THREE.Group();
+        const vCross = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.03), redTrimMat);
+        const hCross = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.03), redTrimMat);
+        crossGroup.add(vCross, hCross);
+        crossGroup.position.set(0, -0.28, 0.40);
+        this.torsoGroup.add(crossGroup);
 
-        // 3. Orbital Crimson & Platinum Energy Rings
-        const whiteRingGeo = new THREE.TorusGeometry(2.1, 0.025, 8, 36);
-        const whiteRingMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        this.goldRing = new THREE.Mesh(whiteRingGeo, whiteRingMat);
+        // White & Silver Armor Chestplate with Red Accents
+        const chestplate = new THREE.Mesh(new THREE.SphereGeometry(0.62, 20, 16), collarMat);
+        chestplate.scale.set(1.15, 0.72, 0.55);
+        chestplate.position.set(0, -0.92, 0.05);
+        this.torsoGroup.add(chestplate);
+
+        const armorTrimTop = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.045, 0.06), redTrimMat);
+        armorTrimTop.position.set(0, -0.74, 0.38);
+        this.torsoGroup.add(armorTrimTop);
+
+        const armorPlateSilver = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.28, 0.08), silverMat);
+        armorPlateSilver.position.set(0, -0.92, 0.35);
+        this.torsoGroup.add(armorPlateSilver);
+
+        // Red Pleated Waist Skirt Trim
+        const skirtGeo = new THREE.ConeGeometry(0.85, 0.55, 16, 1, true);
+        const skirtMesh = new THREE.Mesh(skirtGeo, redTrimMat);
+        skirtMesh.position.set(0, -1.35, 0.02);
+        this.torsoGroup.add(skirtMesh);
+
+        // -------------------------------------------------------------
+        // 5. ORBITAL SAO ENERGY RINGS & FLOATING PARTICLES
+        // -------------------------------------------------------------
+        const whiteRingMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+        this.goldRing = new THREE.Mesh(new THREE.TorusGeometry(2.1, 0.02, 8, 48), whiteRingMat);
         this.goldRing.rotation.x = Math.PI / 3;
         this.coreGroup.add(this.goldRing);
 
-        const crimsonRingGeo = new THREE.TorusGeometry(1.75, 0.02, 8, 36);
-        const crimsonRingMat = new THREE.MeshBasicMaterial({ color: 0xff1e42 });
-        this.crimsonRing = new THREE.Mesh(crimsonRingGeo, crimsonRingMat);
+        const crimsonRingMat = new THREE.MeshBasicMaterial({ color: 0xff1e42, transparent: true, opacity: 0.90 });
+        this.crimsonRing = new THREE.Mesh(new THREE.TorusGeometry(1.75, 0.025, 8, 48), crimsonRingMat);
         this.crimsonRing.rotation.y = Math.PI / 4;
         this.coreGroup.add(this.crimsonRing);
 
-        // 4. 200 Particle Swarm
+        // Ambient Swarm Particles
         this.particleCount = 200;
         const particleGeo = new THREE.BufferGeometry();
         const positions = new Float32Array(this.particleCount * 3);
         const colors = new Float32Array(this.particleCount * 3);
 
         for (let i = 0; i < this.particleCount; i++) {
-            const r = 2.2 + Math.random() * 1.1;
+            const r = 2.0 + Math.random() * 1.2;
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos(2 * Math.random() - 1);
 
@@ -236,14 +404,14 @@ export class AsunaCoreEngine {
             positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
             positions[i * 3 + 2] = r * Math.cos(phi);
 
-            if (Math.random() > 0.4) {
+            if (Math.random() > 0.35) {
                 colors[i * 3] = 1.0;
-                colors[i * 3 + 1] = 1.0;
-                colors[i * 3 + 2] = 1.0;
+                colors[i * 3 + 1] = 0.92;
+                colors[i * 3 + 2] = 0.95;
             } else {
                 colors[i * 3] = 1.0;
-                colors[i * 3 + 1] = 0.12;
-                colors[i * 3 + 2] = 0.26;
+                colors[i * 3 + 1] = 0.14;
+                colors[i * 3 + 2] = 0.30;
             }
         }
 
@@ -254,16 +422,20 @@ export class AsunaCoreEngine {
             size: 0.05,
             vertexColors: true,
             transparent: true,
-            opacity: 0.90
+            opacity: 0.88
         });
 
         this.particleSystem = new THREE.Points(particleGeo, particleMat);
         this.scene.add(this.particleSystem);
+
+        // Interactive Click Burst Particle Container Group
+        this.burstGroup = new THREE.Group();
+        this.scene.add(this.burstGroup);
     }
 
     setSymbolType(newSymbolType) {
         this.symbolType = newSymbolType;
-        this.buildHumanoidGeometry();
+        this.buildAsunaCharacterGeometry();
     }
 
     onWindowResize() {
@@ -276,26 +448,64 @@ export class AsunaCoreEngine {
         this.renderer.setSize(width, height);
     }
 
-    // React to Mouse Cursor Movement on PC / Browser
+    // -------------------------------------------------------------
+    // CURSOR TRACKING & POINTER EVENTS
+    // -------------------------------------------------------------
     onPointerMove(event) {
         if (this.cameraOverride) return;
 
         const x = (event.clientX / window.innerWidth) * 2 - 1;
         const y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-        // Head turns towards mouse cursor (Yaw: X, Pitch: Y)
-        this.targetHeadRotation.yaw = x * 0.75;
-        this.targetHeadRotation.pitch = -y * 0.45;
-        this.targetHeadRotation.roll = x * -0.15;
-        this.targetEyeAim.x = x * 0.055;
-        this.targetEyeAim.y = y * 0.04;
+        // Smooth Head Rotation Target (Yaw, Pitch, Roll)
+        this.targetHeadRotation.yaw = x * 0.72;
+        this.targetHeadRotation.pitch = -y * 0.42;
+        this.targetHeadRotation.roll = x * -0.14;
+
+        // Eyeball 3D Target Aim
+        this.targetEyeAim.x = x * 0.14;
+        this.targetEyeAim.y = y * 0.11;
     }
 
     onPointerDown() {
-        this.triggerClickVibration();
+        this.triggerClickExpressionCycle();
     }
 
-    // React to Camera Movements from Mobile App / Webcam
+    // Interactive Click Handler: Cycles Expressions & Spawns Energy Particles
+    triggerClickExpressionCycle() {
+        this.expressionIndex = (this.expressionIndex + 1) % this.expressions.length;
+        this.currentExpression = this.expressions[this.expressionIndex];
+
+        this.vibrationIntensity = 0.16;
+        this.clickPulse = 1.0;
+        setTimeout(() => { this.vibrationIntensity = 0.0; }, 220);
+
+        this.spawnBurstParticles();
+    }
+
+    spawnBurstParticles() {
+        const starColors = [0xffea00, 0xff2a4b, 0xffffff, 0xff7597];
+        for (let i = 0; i < 18; i++) {
+            const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(0.06, 0.06, 0.06),
+                new THREE.MeshBasicMaterial({ color: starColors[i % starColors.length] })
+            );
+            mesh.position.set(0, 0.45, 0.7);
+            const speed = 0.04 + Math.random() * 0.06;
+            const angle = Math.random() * Math.PI * 2;
+            const vz = (Math.random() - 0.3) * 0.04;
+
+            this.burstParticles.push({
+                mesh,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                vz,
+                life: 1.0
+            });
+            this.burstGroup.add(mesh);
+        }
+    }
+
     setCameraPose(pose) {
         if (!pose) return;
         const { pitch = 0, yaw = 0, roll = 0 } = pose;
@@ -313,28 +523,27 @@ export class AsunaCoreEngine {
     setState(newState) {
         this.state = newState;
         if (newState === 'CLICKING' || newState === 'TOUCH_BURST') {
-            this.triggerClickVibration();
+            this.triggerClickExpressionCycle();
         }
     }
 
-    triggerClickVibration() {
-        this.vibrationIntensity = 0.12;
-        this.clickPulse = 1.0;
-        setTimeout(() => { this.vibrationIntensity = 0.0; }, 180);
-    }
-
+    // -------------------------------------------------------------
+    // MAIN ANIMATION LOOP
+    // -------------------------------------------------------------
     animate() {
         requestAnimationFrame(() => this.animate());
         const time = this.clock.getElapsedTime();
 
         const speedMultiplier = this.state === 'THINKING' ? 2.2 : 1.0;
 
-        // Smooth Head Rotation Interpolation (Dampening lerp)
-        this.currentHeadRotation.yaw += (this.targetHeadRotation.yaw - this.currentHeadRotation.yaw) * 0.08;
-        this.currentHeadRotation.pitch += (this.targetHeadRotation.pitch - this.currentHeadRotation.pitch) * 0.08;
-        this.currentHeadRotation.roll += (this.targetHeadRotation.roll - this.currentHeadRotation.roll) * 0.08;
-        this.currentEyeAim.x += (this.targetEyeAim.x - this.currentEyeAim.x) * 0.16;
-        this.currentEyeAim.y += (this.targetEyeAim.y - this.currentEyeAim.y) * 0.16;
+        // Smooth Dampening Interpolation for Head Tracking
+        this.currentHeadRotation.yaw += (this.targetHeadRotation.yaw - this.currentHeadRotation.yaw) * 0.09;
+        this.currentHeadRotation.pitch += (this.targetHeadRotation.pitch - this.currentHeadRotation.pitch) * 0.09;
+        this.currentHeadRotation.roll += (this.targetHeadRotation.roll - this.currentHeadRotation.roll) * 0.09;
+
+        // Smooth Dampening Interpolation for Eyeball Tracking
+        this.currentEyeAim.x += (this.targetEyeAim.x - this.currentEyeAim.x) * 0.18;
+        this.currentEyeAim.y += (this.targetEyeAim.y - this.currentEyeAim.y) * 0.18;
 
         if (this.headGroup) {
             this.headGroup.rotation.y = this.currentHeadRotation.yaw;
@@ -342,52 +551,158 @@ export class AsunaCoreEngine {
             this.headGroup.rotation.z = this.currentHeadRotation.roll;
         }
 
-        // A tactile acknowledgement: the whole core briefly springs and shimmers on click.
-        this.clickPulse = Math.max(0, this.clickPulse - 0.035);
-        const clickJolt = Math.sin(time * 75) * this.vibrationIntensity;
-        this.coreGroup.rotation.z = clickJolt;
-        this.coreGroup.scale.setScalar(1 + this.clickPulse * 0.055);
-        if (this.skullMesh?.material) {
-            this.skullMesh.material.emissiveIntensity = 0.5 + this.clickPulse * 1.2;
-        }
-
         // Slight Body Follow-Through Motion
         if (this.torsoGroup) {
-            this.torsoGroup.rotation.y = this.currentHeadRotation.yaw * 0.3;
-            this.torsoGroup.rotation.x = this.currentHeadRotation.pitch * 0.25;
+            this.torsoGroup.rotation.y = this.currentHeadRotation.yaw * 0.28;
+            this.torsoGroup.rotation.x = this.currentHeadRotation.pitch * 0.22;
         }
 
-        // Speech & Audio Lip-Sync Animation (Jaw Movement)
-        if (this.jawMesh) {
-            if (this.state === 'SPEAKING') {
-                const jawOpen = Math.abs(Math.sin(time * 16.0)) * 0.18;
-                this.jawMesh.position.y = -0.45 - jawOpen;
-                this.headGroup.position.y = 0.45 + Math.sin(time * 8.0) * 0.02;
+        // Tactile Spring Bounce & Glow Impulse on Click
+        this.clickPulse = Math.max(0, this.clickPulse - 0.032);
+        const clickJolt = Math.sin(time * 70) * this.vibrationIntensity;
+        this.coreGroup.rotation.z = clickJolt;
+        this.coreGroup.scale.setScalar(1 + this.clickPulse * 0.06);
+
+        if (this.skullMesh?.material) {
+            this.skullMesh.material.emissiveIntensity = 0.22 + this.clickPulse * 0.6;
+        }
+
+        // -------------------------------------------------------------
+        // EYEBALL CURSOR ANIMATION & BLINKING SYSTEM
+        // -------------------------------------------------------------
+        if (this.leftEye && this.rightEye) {
+            // Eyeballs pivot inside eye socket towards cursor coordinates
+            const aimX = this.currentEyeAim.x;
+            const aimY = this.currentEyeAim.y;
+
+            this.leftEye.eyeball.rotation.y = aimX * 1.2;
+            this.leftEye.eyeball.rotation.x = -aimY * 1.1;
+
+            this.rightEye.eyeball.rotation.y = aimX * 1.2;
+            this.rightEye.eyeball.rotation.x = -aimY * 1.1;
+
+            // Natural Periodic Blinking Simulation
+            if (time > this.nextBlinkTime && !this.isBlinking) {
+                this.isBlinking = true;
+                this.blinkProgress = 0;
+            }
+
+            let eyeScaleY = 1.0;
+            if (this.isBlinking) {
+                this.blinkProgress += 0.16;
+                eyeScaleY = Math.abs(Math.cos(this.blinkProgress * Math.PI));
+                if (this.blinkProgress >= 1.0) {
+                    this.isBlinking = false;
+                    this.nextBlinkTime = time + 2.5 + Math.random() * 3.5;
+                }
+            }
+
+            // Wink Expression Logic
+            if (this.currentExpression === 'WINK') {
+                this.leftEye.eyeball.scale.y = 0.05;
+                this.rightEye.eyeball.scale.y = eyeScaleY;
+                if (this.winkStarMesh) {
+                    this.winkStarMesh.visible = true;
+                    this.winkStarMesh.rotation.z = time * 3.0;
+                }
             } else {
-                this.jawMesh.position.y = -0.45;
+                this.leftEye.eyeball.scale.y = eyeScaleY;
+                this.rightEye.eyeball.scale.y = eyeScaleY;
+                if (this.winkStarMesh) this.winkStarMesh.visible = false;
             }
         }
 
-        // Eye Iris Pulsation
-        if (this.leftEyeGroup && this.rightEyeGroup) {
-            const blink = this.clickPulse > 0.45 ? 0.35 : 1;
-            this.leftEyeGroup.position.set(-0.27 + this.currentEyeAim.x, 0.15 + this.currentEyeAim.y, 0.72);
-            this.rightEyeGroup.position.set(0.27 + this.currentEyeAim.x, 0.15 + this.currentEyeAim.y, 0.72);
-            this.leftEyeGroup.scale.y = blink;
-            this.rightEyeGroup.scale.y = blink;
-        }
-        if (this.browMesh) {
-            this.browMesh.rotation.z = this.clickPulse * Math.sin(time * 24) * 0.18;
-        }
-        if (this.hairGroup) {
-            this.hairGroup.rotation.z = Math.sin(time * 1.8) * 0.035 + this.currentHeadRotation.roll * 0.25;
+        // -------------------------------------------------------------
+        // DYNAMIC FACIAL EXPRESSIONS & MOUTH MORPHING
+        // -------------------------------------------------------------
+        if (this.blushGroup) {
+            const isBlushing = this.currentExpression === 'BLUSH' || this.currentExpression === 'HAPPY';
+            const targetOpacity = isBlushing ? (this.currentExpression === 'BLUSH' ? 0.85 : 0.40) : 0.15;
+            this.blushGroup.children.forEach(blush => {
+                blush.material.opacity = targetOpacity;
+            });
         }
 
-        // Energy Rings & Particles Rotation
+        if (this.leftBrow && this.rightBrow) {
+            let browTilt = 0;
+            let browY = 0.32;
+            if (this.currentExpression === 'DETERMINED') {
+                browTilt = 0.25;
+                browY = 0.29;
+            } else if (this.currentExpression === 'SURPRISED') {
+                browY = 0.37;
+            } else if (this.currentExpression === 'BLUSH') {
+                browTilt = -0.15;
+            }
+            // Add cursor influence on eyebrows
+            const cursorBrowOffset = this.currentEyeAim.y * 0.15;
+            this.leftBrow.rotation.z = 0.08 + browTilt;
+            this.rightBrow.rotation.z = -0.08 - browTilt;
+            this.leftBrow.position.y = browY + cursorBrowOffset;
+            this.rightBrow.position.y = browY + cursorBrowOffset;
+        }
+
+        // Mouth Articulation
+        if (this.mouthGroup) {
+            if (this.state === 'SPEAKING') {
+                const jawOpen = Math.abs(Math.sin(time * 16.0)) * 0.14;
+                this.defaultSmileMesh.visible = false;
+                this.openMouthMesh.visible = true;
+                this.openMouthMesh.scale.set(1.1, 0.4 + jawOpen * 2.0, 0.4);
+            } else if (this.currentExpression === 'SURPRISED') {
+                this.defaultSmileMesh.visible = false;
+                this.openMouthMesh.visible = true;
+                this.openMouthMesh.scale.set(0.6, 0.8, 0.4);
+            } else {
+                this.defaultSmileMesh.visible = true;
+                this.openMouthMesh.visible = false;
+            }
+        }
+
+        // -------------------------------------------------------------
+        // HAIR PHYSICS & SWAY ANIMATION
+        // -------------------------------------------------------------
+        if (this.sideLocksGroup) {
+            const sway = Math.sin(time * 2.2) * 0.05 + this.currentHeadRotation.roll * 0.3;
+            this.sideLocksGroup.rotation.z = sway;
+        }
+        if (this.braidsGroup) {
+            this.braidsGroup.rotation.z = Math.cos(time * 1.8) * 0.03;
+        }
+        if (this.fringeGroup) {
+            this.fringeGroup.rotation.z = Math.sin(time * 1.5) * 0.02 + this.currentHeadRotation.roll * 0.15;
+        }
+        if (this.backHairGroup) {
+            this.backHairGroup.rotation.z = Math.sin(time * 1.4) * 0.04;
+        }
+
+        // -------------------------------------------------------------
+        // CLICK BURST PARTICLES UPDATE
+        // -------------------------------------------------------------
+        for (let i = this.burstParticles.length - 1; i >= 0; i--) {
+            const p = this.burstParticles[i];
+            p.mesh.position.x += p.vx;
+            p.mesh.position.y += p.vy;
+            p.mesh.position.z += p.vz;
+            p.life -= 0.035;
+            p.mesh.scale.setScalar(p.life);
+            if (p.life <= 0) {
+                this.burstGroup.remove(p.mesh);
+                p.mesh.geometry.dispose();
+                p.mesh.material.dispose();
+                this.burstParticles.splice(i, 1);
+            }
+        }
+
+        // Energy Rings & Floating Motion
         if (this.goldRing) this.goldRing.rotation.z += 0.01 * speedMultiplier;
         if (this.crimsonRing) this.crimsonRing.rotation.x += 0.012 * speedMultiplier;
+        if (this.crimsonLight) {
+            const pulse = this.currentExpression === 'DETERMINED' ? 6.0 : 3.5;
+            this.crimsonLight.intensity = pulse + Math.sin(time * 3.0) * 0.5;
+        }
 
-        // Floating Breathing Motion
+        // Gentle Floating Breathing Motion
         this.coreGroup.position.y = Math.sin(time * 1.4) * 0.08;
 
         if (this.particleSystem) this.particleSystem.rotation.y = time * 0.12 * speedMultiplier;
