@@ -65,6 +65,7 @@ class ChatRequest(BaseModel):
     client_time: str | None = None
     client_timezone: str | None = None
     user_email: str | None = "user@asuna.ai"
+    user_nickname: str | None = None
     target_device: str | None = "local"
 
 
@@ -102,6 +103,7 @@ async def chat(req: ChatRequest, request: Request, x_asuna_session: str | None =
     current_time = req.client_time or datetime.now(timezone.utc).strftime("%A, %B %d, %Y %I:%M %p UTC")
     timezone_name = req.client_timezone or "UTC"
     user_email = req.user_email or "user@asuna.ai"
+    user_nickname = (req.user_nickname or "").strip()[:40]
 
     # Process cross-device intent
     from app.ai.intent.intent_engine import intent_engine
@@ -119,6 +121,7 @@ async def chat(req: ChatRequest, request: Request, x_asuna_session: str | None =
 
     system_context = (
         f"User Account: {user_email}.\n"
+        f"User Nickname: {user_nickname or 'not provided'}. Address the user by this nickname when it is provided; never call them Mr. Stark.\n"
         f"Target Device: {target_dev} (Status: {remote_status.get('status') if remote_status else 'local'}).\n"
         f"User's Local Date and Time: {current_time} (Timezone: {timezone_name}). "
         f"Server UTC Timestamp: {datetime.now(timezone.utc).isoformat()}.\n"

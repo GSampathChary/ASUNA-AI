@@ -31,11 +31,11 @@ def set_system_volume(level: int) -> None:
 async def run_windows_agent():
     if not PAIRING_TOKEN:
         raise RuntimeError("ASUNA_AGENT_TOKEN must be set before starting the Windows agent.")
-    logger.info(f"Initializing JARVIS Windows Agent for account {USER_EMAIL}...")
+    logger.info(f"Initializing Asuna Windows Agent for account {USER_EMAIL}...")
     try:
         import websockets
         async with websockets.connect(BACKEND_WS_URL) as ws:
-            logger.info(f"Connected to JARVIS Gateway at {BACKEND_WS_URL}")
+            logger.info(f"Connected to Asuna Gateway at {BACKEND_WS_URL}")
 
             # Register Windows Agent session under account email
             await ws.send(json.dumps({

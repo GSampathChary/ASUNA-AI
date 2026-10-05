@@ -161,7 +161,7 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
             Icon(Icons.diamond_outlined, color: Color(0xFFFFD700)),
             SizedBox(width: 8),
             Text(
-              'JARVIS ANDROID',
+              'ASUNA ANDROID',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.5,

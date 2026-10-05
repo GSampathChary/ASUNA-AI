@@ -163,7 +163,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         await websocket.send_json({
             "type": "connected",
-            "message": "Connected to JARVIS Neural Gateway",
+            "message": "Connected to Asuna Neural Gateway",
             "asuna_state": asuna_state_machine.current_state.value
         })
 

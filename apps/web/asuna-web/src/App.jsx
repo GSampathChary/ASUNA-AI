@@ -5,7 +5,7 @@ import { useVoiceAssistant } from './hooks/useVoiceAssistant';
 import './asuna.css';
 
 const clock = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-const initialMessages = [{ sender: 'asuna', text: 'Good day, Sir. JARVIS is online. Pair this device to enable cross-device commands.', time: clock() }];
+const welcomeMessage = (nickname) => ({ sender: 'asuna', text: `Hello${nickname ? `, ${nickname}` : ''}. Asuna is online. Pair this device to enable cross-device commands.`, time: clock() });
 // In production on Vercel, /api is proxied to Render by vercel.json. This
 // keeps the browser on one origin and prevents CORS from blocking chat.
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '')).replace(/\/$/, '');
@@ -76,14 +76,15 @@ function speak(text) {
 }
 
 export default function App() {
-  const [messages, setMessages] = useState(initialMessages);
+  const [nickname, setNickname] = useState(() => localStorage.getItem('asuna_user_nickname') || '');
+  const [messages, setMessages] = useState(() => [welcomeMessage(localStorage.getItem('asuna_user_nickname') || '')]);
   const [input, setInput] = useState('');
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraPose, setCameraPose] = useState(null);
   const [busy, setBusy] = useState(false);
   const [currentState, setCurrentState] = useState('IDLE');
-  const [statusText, setStatusText] = useState('JARVIS online');
-  const [userEmail, setUserEmail] = useState(() => localStorage.getItem('asuna_user_email') || 'stark@starkindustries.com');
+  const [statusText, setStatusText] = useState('Asuna online');
+  const [userEmail, setUserEmail] = useState(() => localStorage.getItem('asuna_user_email') || '');
   const [targetDevice, setTargetDevice] = useState('local');
   const [connectedDevices, setConnectedDevices] = useState([]);
   const [pairingToken, setPairingToken] = useState(() => sessionStorage.getItem('asuna_pairing_token') || '');
@@ -106,7 +107,7 @@ export default function App() {
       const message = JSON.parse(event.data);
       if (message.type === 'registered') {
         setSessionToken(message.session_token);
-        setStatusText('JARVIS online');
+        setStatusText('Asuna online');
       }
       if (message.type === 'device_network_update') setConnectedDevices(message.connected_devices || []);
       if (message.type === 'remote_action' && browserDeviceType() === 'mobile') {
@@ -144,7 +145,7 @@ export default function App() {
     if (!text || busy) return;
     const pendingId = `pending-${Date.now()}`;
     setMessages((current) => [...current, { sender: 'user', text, time: clock() }]);
-    setMessages((current) => [...current, { id: pendingId, sender: 'asuna', text: 'JARVIS processing…', time: clock(), pending: true }]);
+    setMessages((current) => [...current, { id: pendingId, sender: 'asuna', text: 'Asuna is processing…', time: clock(), pending: true }]);
     setInput('');
     setBusy(true);
     setCurrentState('THINKING');
@@ -157,6 +158,7 @@ export default function App() {
           client_time: new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
           client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           user_email: userEmail,
+          user_nickname: nickname,
           target_device: targetDevice,
         }, sessionToken,
         (_attempt, msg) => {
@@ -164,15 +166,15 @@ export default function App() {
           if (msg) setStatusText(msg);
         },
       );
-      const reply = data.reply || 'I could not generate a response, Sir.';
+      const reply = data.reply || `I could not generate a response${nickname ? `, ${nickname}` : ''}.`;
       setMessages((current) => current.map((message) => (
         message.id === pendingId ? { ...message, text: reply, time: clock(), pending: false } : message
       )));
       setCurrentState('SPEAKING');
-      setStatusText('JARVIS online');
+      setStatusText('Asuna online');
       speak(reply);
     } catch (error) {
-      const reply = `Forgive me, Sir. I could not execute your request because ${error.message || 'the neural gateway is unreachable'}.`;
+      const reply = `I could not execute your request${nickname ? `, ${nickname}` : ''}, because ${error.message || 'the neural gateway is unreachable'}.`;
       setMessages((current) => current.map((message) => (
         message.id === pendingId ? { ...message, text: reply, time: clock(), pending: false } : message
       )));
@@ -182,10 +184,10 @@ export default function App() {
       setBusy(false);
       window.setTimeout(() => {
         setCurrentState('IDLE');
-        setStatusText('JARVIS online');
+        setStatusText('Asuna online');
       }, 1500);
     }
-  }, [busy, messages, userEmail, targetDevice, sessionToken]);
+  }, [busy, messages, userEmail, nickname, targetDevice, sessionToken]);
 
   const voice = useVoiceAssistant({ onCommand: send });
   useEffect(() => {
@@ -210,11 +212,18 @@ export default function App() {
     setInstallPrompt(null);
   };
 
-  const changeAccountEmail = () => {
+  const changeProfile = () => {
     const newEmail = prompt('Enter your account email (use the same email on Laptop & Mobile for cross-device control):', userEmail);
     if (newEmail && newEmail.includes('@')) {
-      setUserEmail(newEmail.trim());
-      localStorage.setItem('asuna_user_email', newEmail.trim());
+      const nextNickname = prompt('Enter the nickname Asuna should use for you:', nickname || newEmail.split('@')[0]);
+      if (!nextNickname?.trim()) return;
+      const cleanEmail = newEmail.trim();
+      const cleanNickname = nextNickname.trim().slice(0, 40);
+      setUserEmail(cleanEmail);
+      setNickname(cleanNickname);
+      localStorage.setItem('asuna_user_email', cleanEmail);
+      localStorage.setItem('asuna_user_nickname', cleanNickname);
+      setMessages((current) => [...current, welcomeMessage(cleanNickname)]);
       setSessionToken('');
     }
   };
@@ -237,13 +246,13 @@ export default function App() {
     window.setTimeout(() => setCurrentState('IDLE'), timeout);
   }, []);
 
-  const voiceLabel = !voice.supported ? 'Voice unavailable in this browser' : voice.status === 'listening' ? 'Listening — say “Jarvis” then your request' : voice.status === 'permission-denied' ? 'Microphone permission was denied' : 'JARVIS voice standby';
+  const voiceLabel = !voice.supported ? 'Voice unavailable in this browser' : voice.status === 'listening' ? 'Listening — say “Asuna” then your request' : voice.status === 'permission-denied' ? 'Microphone permission was denied' : 'Asuna voice standby';
 
   return <main className="app-shell">
     <header className="topbar">
-      <div className="brand"><span className="brand-mark" aria-hidden="true" /><span>JARVIS OS</span></div>
+      <div className="brand"><span className="brand-mark" aria-hidden="true" /><span>ASUNA OS</span></div>
       <div className="topbar-actions">
-        <button className="outline-button" onClick={changeAccountEmail} title="Cross-Device Account Sync">🔑 {userEmail}</button>
+        <button className="outline-button" onClick={changeProfile} title="Set your account email and nickname">👤 {nickname || 'Set profile'}</button>
         <button className="outline-button" onClick={pairDevice} title="Pair this device securely">{sessionToken ? '✓ Paired' : '🔗 Pair device'}</button>
         <button className="outline-button" onClick={() => alert(`Connected Devices on ${userEmail}:\n` + (connectedDevices.map(d => `• ${d.device_type.toUpperCase()} (${d.status})`).join('\n') || '• Browser (Current)\n• Laptop Agent (Offline - Run agents/windows/main.py)'))}>
           🌐 Devices ({connectedDevices.length || 1})
@@ -253,9 +262,9 @@ export default function App() {
       </div>
     </header>
     <div className="main-grid">
-      <section className="chat-card" aria-label="JARVIS conversation">
+      <section className="chat-card" aria-label="Asuna conversation">
         <div className="card-header">
-          <div><span className="eyebrow">STARK NEURAL NET</span><strong>{statusText}</strong></div>
+          <div><span className="eyebrow">ASUNA NEURAL NET{nickname ? ` · ${nickname.toUpperCase()}` : ''}</span><strong>{statusText}</strong></div>
           <div className="target-selector" style={{ display: 'flex', gap: '4px' }}>
             <button className={`outline-button ${targetDevice === 'local' ? 'active' : ''}`} style={{ fontSize: '11px', padding: '2px 6px' }} onClick={() => setTargetDevice('local')}>⚡ Auto</button>
             <button className={`outline-button ${targetDevice === 'laptop' ? 'active' : ''}`} style={{ fontSize: '11px', padding: '2px 6px' }} onClick={() => setTargetDevice('laptop')}>💻 Laptop</button>
@@ -263,13 +272,13 @@ export default function App() {
           </div>
         </div>
         <div className="messages">{messages.map((message, index) => <article className={`message ${message.sender === 'user' ? 'user' : ''} ${message.pending ? 'pending' : ''}`} key={message.id || `${message.time}-${index}`}>{message.text}<time>{message.time}</time></article>)}<div ref={messagesEndRef} /></div>
-        <form className="composer" onSubmit={(event) => { event.preventDefault(); send(input); }}><input value={input} onChange={(event) => setInput(event.target.value)} aria-label="Ask JARVIS" placeholder="Say 'Jarvis, open YouTube on my laptop'…" /><button className="send-button" type="submit" disabled={busy}>{busy ? 'Processing…' : 'Send'}</button></form>
+        <form className="composer" onSubmit={(event) => { event.preventDefault(); send(input); }}><input value={input} onChange={(event) => setInput(event.target.value)} aria-label="Ask Asuna" placeholder="Say 'Asuna, open YouTube on my laptop'…" /><button className="send-button" type="submit" disabled={busy}>{busy ? 'Processing…' : 'Send'}</button></form>
       </section>
-      <section className="stage" aria-label="JARVIS controls">
+      <section className="stage" aria-label="Asuna controls">
         {cameraOpen && <CameraGesturePanel onGesture={onGesture} onCameraPose={setCameraPose} onClose={() => setCameraOpen(false)} />}
         <div className="core-visual"><AsunaCoreWeb currentState={voice.status === 'listening' ? 'LISTENING' : currentState} cameraPose={cameraPose} symbolType="humanoid" onClick={() => reactToCore('TOUCH_BURST')} onWheel={() => reactToCore('SCROLLING', 700)} /></div>
-        <div className="assistant-status"><div className="assistant-copy"><span className="eyebrow">TONY STARK'S ARTIFICIAL INTELLIGENCE</span><h1>Ask naturally.<br />Control cross-device.</h1><p>{voice.transcript || voiceLabel}</p><div className="control-row"><button className={`primary-button ${voice.status === 'listening' ? 'active' : ''}`} disabled={!voice.supported} onClick={voice.status === 'listening' ? voice.stop : voice.start}>{voice.status === 'listening' ? '■ Stop listening' : '🎙 Start JARVIS voice'}</button><button className="outline-button" onClick={() => setCameraOpen(true)}>✋ Camera tracking</button></div><p className="capability">Log in with the same email on Laptop & Mobile to control both devices seamlessly.</p></div></div>
-        <p className="privacy-note">Remote execution requires a paired device.<br />Account: {userEmail}.</p>
+        <div className="assistant-status"><div className="assistant-copy"><span className="eyebrow">{nickname ? `${nickname.toUpperCase()}'S PERSONAL AI` : 'YOUR PERSONAL AI'}</span><h1>Ask naturally.<br />Control cross-device.</h1><p>{voice.transcript || voiceLabel}</p><div className="control-row"><button className={`primary-button ${voice.status === 'listening' ? 'active' : ''}`} disabled={!voice.supported} onClick={voice.status === 'listening' ? voice.stop : voice.start}>{voice.status === 'listening' ? '■ Stop listening' : '🎙 Start Asuna voice'}</button><button className="outline-button" onClick={() => setCameraOpen(true)}>✋ Camera tracking</button></div><p className="capability">Set your email and nickname to personalize Asuna and link your devices.</p></div></div>
+        <p className="privacy-note">Remote execution requires a paired device.<br />{nickname ? `Profile: ${nickname} · ` : ''}Account: {userEmail || 'Not set'}.</p>
       </section>
     </div>
   </main>;
