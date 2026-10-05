@@ -77,6 +77,37 @@ class AsunaHumanoidPainter extends CustomPainter {
     );
     canvas.drawRRect(RRect.fromRectAndRadius(neckRect, const Radius.circular(8)), Paint()..color = const Color(0xFF111118));
 
+    final neckRingPaint = Paint()
+      ..color = const Color(0xFF28D7FF).withOpacity(0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    for (var y = 0; y < 3; y++) {
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(neckRect.center.dx, neckRect.top + 12 + y * 11), width: neckRect.width * 0.78, height: 6),
+        neckRingPaint,
+      );
+    }
+
+    // A compact chest panel turns the floating head into a recognisable robot torso.
+    final chestRect = Rect.fromCenter(
+      center: Offset(center.dx, center.dy + headRadius * 1.26),
+      width: headRadius * 1.15,
+      height: headRadius * 0.42,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(chestRect, const Radius.circular(16)),
+      Paint()..color = const Color(0xFF182640),
+    );
+    final corePulse = 1 + sin(animationValue * pi * 2) * 0.12;
+    canvas.drawCircle(
+      chestRect.center.translate(0, -2),
+      headRadius * 0.12 * corePulse,
+      Paint()
+        ..color = const Color(0xFF9D6CFF)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+    );
+    canvas.drawCircle(chestRect.center.translate(0, -2), headRadius * 0.07 * corePulse, Paint()..color = const Color(0xFF28D7FF));
+
     // 3. 3D Cranium & Skull Structure
     final skullPath = Path();
     final topHead = Offset(headCenter.dx, headCenter.dy - headRadius * 1.1);
@@ -100,6 +131,38 @@ class AsunaHumanoidPainter extends CustomPainter {
       ..color = const Color(0xFF1A1A24)
       ..style = PaintingStyle.fill;
     canvas.drawPath(skullPath, headPaint);
+
+    // Gold crown, cyan temple modules, and cheek armor give the face distinct character.
+    final crownPaint = Paint()
+      ..color = const Color(0xFFFFC66D)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5;
+    canvas.drawArc(
+      Rect.fromCircle(center: headCenter.translate(0, 3), radius: headRadius * 0.78),
+      pi * 1.15,
+      pi * 0.70,
+      false,
+      crownPaint,
+    );
+
+    final armorPaint = Paint()..color = const Color(0xFF2C3A55);
+    final cyanPaint = Paint()..color = const Color(0xFF28D7FF);
+    for (final side in [-1.0, 1.0]) {
+      final temple = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(headCenter.dx + side * headRadius * 0.7, headCenter.dy - headRadius * 0.08), width: 10, height: 25),
+        const Radius.circular(5),
+      );
+      canvas.drawRRect(temple, armorPaint);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(headCenter.dx + side * headRadius * 0.47, headCenter.dy + headRadius * 0.2), width: 14, height: 20), const Radius.circular(3)),
+        armorPaint,
+      );
+      canvas.drawLine(
+        Offset(headCenter.dx + side * headRadius * 0.42, headCenter.dy + headRadius * 0.13),
+        Offset(headCenter.dx + side * headRadius * 0.51, headCenter.dy + headRadius * 0.18),
+        cyanPaint..strokeWidth = 2,
+      );
+    }
 
     // Wireframe Mesh & Facial Grid Overlay
     final wireframePaint = Paint()
@@ -147,6 +210,7 @@ class AsunaHumanoidPainter extends CustomPainter {
       Offset(headCenter.dx, leftEyePos.dy + 18),
       browPaint,
     );
+    canvas.drawCircle(Offset(headCenter.dx, chinPoint.dy - 14), 4.5 * corePulse, cyanPaint);
 
     // 5. Orbiting Swarm Particles
     for (var p in particles) {
