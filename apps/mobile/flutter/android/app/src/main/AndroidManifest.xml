@@ -5,7 +5,7 @@
         <package android:name="com.google.android.youtube" />
         <package android:name="com.android.chrome" />
     </queries>
-    <application android:label="Asuna" android:theme="@style/LaunchTheme">
+    <application android:label="JARVIS" android:theme="@style/LaunchTheme">
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

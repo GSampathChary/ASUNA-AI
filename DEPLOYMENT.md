@@ -106,6 +106,15 @@ flutter devices
 flutter run --release
 ```
 
+If `flutter build apk` reports `deleted Android v1 embedding`, remove the obsolete local file left by an older project template, then rebuild:
+
+```powershell
+Remove-Item .\android\app\src\main\java\io\flutter\plugins\GeneratedPluginRegistrant.java -Force -ErrorAction SilentlyContinue
+flutter clean
+flutter pub get
+flutter build apk --release
+```
+
 Enable **Developer options → USB debugging** on the Android phone before using `flutter run`; accept the USB-debugging prompt when it appears. On first launch, tap the link icon, enter `wss://your-backend-domain/ws`, your account email, and your pairing token. Approve camera permission the first time you use flashlight. Use a deployed `wss://` endpoint for a real phone; `localhost` points to the phone itself, not your laptop.
 
 Once both devices show as paired, use the web HUD or mobile app with the same account email:
