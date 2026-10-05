@@ -56,21 +56,16 @@ export class AsunaCoreEngine {
         crimsonLight.position.set(-3, -2, 4);
         this.scene.add(crimsonLight);
 
-        const cyanLight = new THREE.PointLight(0x28d7ff, 2.4, 10);
-        cyanLight.position.set(3, 1.5, 4);
-        this.scene.add(cyanLight);
-
-        const violetRimLight = new THREE.PointLight(0x9d6cff, 1.8, 9);
-        violetRimLight.position.set(0, 3, -3);
-        this.scene.add(violetRimLight);
-
         this.clock = new THREE.Clock();
         this.vibrationIntensity = 0.0;
+        this.clickPulse = 0.0;
 
         this.onPointerMove = this.onPointerMove.bind(this);
+        this.onPointerDown = this.onPointerDown.bind(this);
         this.onWindowResize = this.onWindowResize.bind(this);
         window.addEventListener('pointermove', this.onPointerMove);
         window.addEventListener('resize', this.onWindowResize);
+        this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
 
         this.animate();
     }
@@ -102,20 +97,6 @@ export class AsunaCoreEngine {
         });
         this.skullMesh = new THREE.Mesh(skullGeo, skullMat);
         this.headGroup.add(this.skullMesh);
-
-        // Halo-like crown plate gives the cranium a cleaner silhouette from every angle.
-        const crownGeo = new THREE.TorusGeometry(0.72, 0.045, 10, 32, Math.PI * 1.1);
-        const crownMat = new THREE.MeshStandardMaterial({
-            color: 0xffc66d,
-            emissive: 0x7d3200,
-            emissiveIntensity: 0.9,
-            metalness: 0.9,
-            roughness: 0.18
-        });
-        const crownMesh = new THREE.Mesh(crownGeo, crownMat);
-        crownMesh.rotation.x = Math.PI / 2;
-        crownMesh.position.set(0, 0.20, 0.82);
-        this.headGroup.add(crownMesh);
 
         // Cybernetic Facial Wireframe Mesh
         const facialGridGeo = new THREE.IcosahedronGeometry(0.88, 2);
@@ -174,43 +155,6 @@ export class AsunaCoreEngine {
         noseMesh.position.set(0, 0.02, 0.75);
         this.headGroup.add(noseMesh);
 
-        // Layered face armor: temple pods, cheek plates, and a glowing chin interface.
-        const armorMat = new THREE.MeshStandardMaterial({
-            color: 0x2c3a55,
-            emissive: 0x07172c,
-            emissiveIntensity: 0.8,
-            metalness: 0.92,
-            roughness: 0.2
-        });
-        const accentMat = new THREE.MeshStandardMaterial({
-            color: 0x28d7ff,
-            emissive: 0x087da5,
-            emissiveIntensity: 1.5,
-            metalness: 0.65,
-            roughness: 0.16
-        });
-        [-1, 1].forEach((side) => {
-            const temple = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.28, 6, 12), armorMat);
-            temple.position.set(side * 0.66, 0.16, 0.43);
-            temple.rotation.z = side * 0.22;
-            this.headGroup.add(temple);
-
-            const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.32, 0.13), armorMat);
-            cheek.position.set(side * 0.43, -0.20, 0.73);
-            cheek.rotation.z = side * -0.35;
-            this.headGroup.add(cheek);
-
-            const cheekLight = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.025, 0.035), accentMat);
-            cheekLight.position.set(side * 0.45, -0.15, 0.81);
-            cheekLight.rotation.z = side * -0.35;
-            this.headGroup.add(cheekLight);
-        });
-
-        const chinCore = new THREE.Mesh(new THREE.SphereGeometry(0.075, 16, 16), accentMat);
-        chinCore.position.set(0, -0.56, 0.73);
-        this.headGroup.add(chinCore);
-        this.chinCore = chinCore;
-
         // 2. Neck & Upper Torso Harness (Base Structure)
         this.torsoGroup = new THREE.Group();
         this.manGroup.add(this.torsoGroup);
@@ -221,38 +165,11 @@ export class AsunaCoreEngine {
         neckMesh.position.set(0, -0.15, -0.05);
         this.torsoGroup.add(neckMesh);
 
-        const neckLightMat = new THREE.MeshBasicMaterial({ color: 0x28d7ff });
-        [-0.27, -0.12, 0.03].forEach((y) => {
-            const neckRing = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.018, 8, 24), neckLightMat);
-            neckRing.rotation.x = Math.PI / 2;
-            neckRing.position.set(0, y, 0.02);
-            this.torsoGroup.add(neckRing);
-        });
-
         const shouldersGeo = new THREE.BoxGeometry(2.1, 0.45, 0.9);
         const shouldersMat = new THREE.MeshStandardMaterial({ color: 0x1f1f2e, metalness: 0.8, roughness: 0.3 });
         const shouldersMesh = new THREE.Mesh(shouldersGeo, shouldersMat);
         shouldersMesh.position.set(0, -0.65, -0.1);
         this.torsoGroup.add(shouldersMesh);
-
-        const chestPlate = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.62, 0.82, 0.38, 6),
-            new THREE.MeshStandardMaterial({ color: 0x182640, metalness: 0.9, roughness: 0.22 })
-        );
-        chestPlate.rotation.x = Math.PI / 2;
-        chestPlate.position.set(0, -0.98, 0.13);
-        this.torsoGroup.add(chestPlate);
-
-        const coreMat = new THREE.MeshStandardMaterial({
-            color: 0x9d6cff,
-            emissive: 0x4817a6,
-            emissiveIntensity: 1.8,
-            metalness: 0.5,
-            roughness: 0.15
-        });
-        this.chestCore = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 20), coreMat);
-        this.chestCore.position.set(0, -0.99, 0.36);
-        this.torsoGroup.add(this.chestCore);
 
         const collarRingGeo = new THREE.TorusGeometry(1.05, 0.04, 12, 32);
         const collarRingMat = new THREE.MeshBasicMaterial({ color: 0xff1e42 });
@@ -342,6 +259,10 @@ export class AsunaCoreEngine {
         this.targetHeadRotation.roll = x * -0.15;
     }
 
+    onPointerDown() {
+        this.triggerClickVibration();
+    }
+
     // React to Camera Movements from Mobile App / Webcam
     setCameraPose(pose) {
         if (!pose) return;
@@ -366,6 +287,7 @@ export class AsunaCoreEngine {
 
     triggerClickVibration() {
         this.vibrationIntensity = 0.12;
+        this.clickPulse = 1.0;
         setTimeout(() => { this.vibrationIntensity = 0.0; }, 180);
     }
 
@@ -384,6 +306,15 @@ export class AsunaCoreEngine {
             this.headGroup.rotation.y = this.currentHeadRotation.yaw;
             this.headGroup.rotation.x = this.currentHeadRotation.pitch;
             this.headGroup.rotation.z = this.currentHeadRotation.roll;
+        }
+
+        // A tactile acknowledgement: the whole core briefly springs and shimmers on click.
+        this.clickPulse = Math.max(0, this.clickPulse - 0.035);
+        const clickJolt = Math.sin(time * 75) * this.vibrationIntensity;
+        this.coreGroup.rotation.z = clickJolt;
+        this.coreGroup.scale.setScalar(1 + this.clickPulse * 0.055);
+        if (this.skullMesh?.material) {
+            this.skullMesh.material.emissiveIntensity = 0.5 + this.clickPulse * 1.2;
         }
 
         // Slight Body Follow-Through Motion
@@ -410,12 +341,6 @@ export class AsunaCoreEngine {
                 : 1.0;
             this.leftIris.scale.set(irisScale, irisScale, 1);
             this.rightIris.scale.set(irisScale, irisScale, 1);
-        }
-
-        if (this.chinCore && this.chestCore) {
-            const corePulse = 1 + Math.sin(time * (this.state === 'THINKING' ? 7 : 3.5)) * 0.12;
-            this.chinCore.scale.setScalar(corePulse);
-            this.chestCore.scale.setScalar(corePulse);
         }
 
         // Energy Rings & Particles Rotation
