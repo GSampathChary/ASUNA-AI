@@ -98,17 +98,18 @@ export class AsunaCoreEngine {
         this.skullMesh = new THREE.Mesh(skullGeo, skullMat);
         this.headGroup.add(this.skullMesh);
 
-        // Cybernetic Facial Wireframe Mesh
-        const facialGridGeo = new THREE.IcosahedronGeometry(0.88, 2);
-        facialGridGeo.scale(0.9, 1.17, 0.97);
-        const facialGridMat = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            wireframe: true,
+        // A point-cloud shell replaces the old wireframe, creating a softer holographic 3D face.
+        const facialPointGeo = new THREE.IcosahedronGeometry(0.89, 3);
+        facialPointGeo.scale(0.9, 1.17, 0.97);
+        const facialPointMat = new THREE.PointsMaterial({
+            color: 0xff9bac,
+            size: 0.026,
+            sizeAttenuation: true,
             transparent: true,
-            opacity: 0.28
+            opacity: 0.82
         });
-        this.facialGridMesh = new THREE.Mesh(facialGridGeo, facialGridMat);
-        this.headGroup.add(this.facialGridMesh);
+        this.facialPointCloud = new THREE.Points(facialPointGeo, facialPointMat);
+        this.headGroup.add(this.facialPointCloud);
 
         // Jawbone Mesh (Articulates when speaking)
         const jawGeo = new THREE.ConeGeometry(0.68, 0.95, 5);
@@ -155,7 +156,7 @@ export class AsunaCoreEngine {
         noseMesh.position.set(0, 0.02, 0.75);
         this.headGroup.add(noseMesh);
 
-        // 2. Neck & Upper Torso Harness (Base Structure)
+        // 2. Neck, chest, and arms turn the floating head into a complete upper body.
         this.torsoGroup = new THREE.Group();
         this.manGroup.add(this.torsoGroup);
 
@@ -165,11 +166,40 @@ export class AsunaCoreEngine {
         neckMesh.position.set(0, -0.15, -0.05);
         this.torsoGroup.add(neckMesh);
 
-        const shouldersGeo = new THREE.BoxGeometry(2.1, 0.45, 0.9);
+        const shouldersGeo = new THREE.BoxGeometry(2.35, 0.42, 0.82);
         const shouldersMat = new THREE.MeshStandardMaterial({ color: 0x1f1f2e, metalness: 0.8, roughness: 0.3 });
         const shouldersMesh = new THREE.Mesh(shouldersGeo, shouldersMat);
         shouldersMesh.position.set(0, -0.65, -0.1);
         this.torsoGroup.add(shouldersMesh);
+
+        const torsoMat = new THREE.MeshStandardMaterial({
+            color: 0x171827,
+            metalness: 0.88,
+            roughness: 0.24,
+            emissive: 0x19030a,
+            emissiveIntensity: 0.35
+        });
+        const chestMesh = new THREE.Mesh(new THREE.SphereGeometry(0.86, 24, 18), torsoMat);
+        chestMesh.scale.set(1.08, 0.72, 0.54);
+        chestMesh.position.set(0, -1.18, -0.05);
+        this.torsoGroup.add(chestMesh);
+
+        const chestLineMat = new THREE.MeshBasicMaterial({ color: 0xff1e42 });
+        const chestLine = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.025, 0.035), chestLineMat);
+        chestLine.position.set(0, -1.08, 0.44);
+        this.torsoGroup.add(chestLine);
+
+        [-1, 1].forEach((side) => {
+            const shoulderPad = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), torsoMat);
+            shoulderPad.scale.set(1.15, 0.75, 0.9);
+            shoulderPad.position.set(side * 1.05, -0.66, -0.04);
+            this.torsoGroup.add(shoulderPad);
+
+            const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.19, 0.54, 8, 16), torsoMat);
+            upperArm.position.set(side * 1.18, -1.2, -0.03);
+            upperArm.rotation.z = side * -0.14;
+            this.torsoGroup.add(upperArm);
+        });
 
         const collarRingGeo = new THREE.TorusGeometry(1.05, 0.04, 12, 32);
         const collarRingMat = new THREE.MeshBasicMaterial({ color: 0xff1e42 });
@@ -341,6 +371,11 @@ export class AsunaCoreEngine {
                 : 1.0;
             this.leftIris.scale.set(irisScale, irisScale, 1);
             this.rightIris.scale.set(irisScale, irisScale, 1);
+        }
+
+        if (this.facialPointCloud) {
+            this.facialPointCloud.rotation.y = time * 0.08;
+            this.facialPointCloud.material.size = 0.026 + this.clickPulse * 0.015;
         }
 
         // Energy Rings & Particles Rotation
