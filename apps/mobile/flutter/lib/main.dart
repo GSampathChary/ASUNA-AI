@@ -223,31 +223,24 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
                 ],
               ),
             ),
-            const Spacer(),
-
-            Center(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  AsunaCoreWidget(currentState: _currentState),
-                  if (_gestureMode == 'GESTURE_MODE')
-                    Positioned(
-                      bottom: 10,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.black87,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFFFD700), width: 0.5),
-                        ),
-                        child: const Text(
-                          'RETICLE: ACTIVE',
-                          style: TextStyle(fontSize: 10, color: Color(0xFFFFD700)),
-                        ),
-                      ),
-                    ),
-                ],
+            const SizedBox(height: 12),
+            Text(
+              'ASUNA INTERACTIVE HUMANOID',
+              style: TextStyle(
+                color: const Color(0xFFFFD700).withOpacity(0.8),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1,
               ),
+            ),
+            if (_gestureMode == 'GESTURE_MODE')
+              const Padding(
+                padding: EdgeInsets.only(top: 5),
+                child: Text('RETICLE: ACTIVE', style: TextStyle(fontSize: 10, color: Color(0xFFFFD700))),
+              ),
+            const Spacer(),
+            Center(
+              child: AsunaCoreWidget(currentState: _currentState),
             ),
 
             const Spacer(),
