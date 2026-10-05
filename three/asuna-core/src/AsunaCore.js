@@ -15,6 +15,8 @@ export class AsunaCoreEngine {
         // Head tracking rotations (Pitch, Yaw, Roll)
         this.targetHeadRotation = { pitch: 0, yaw: 0, roll: 0 };
         this.currentHeadRotation = { pitch: 0, yaw: 0, roll: 0 };
+        this.targetEyeAim = { x: 0, y: 0 };
+        this.currentEyeAim = { x: 0, y: 0 };
         this.cameraOverride = false;
         this.cameraOverrideTimer = null;
 
@@ -85,18 +87,32 @@ export class AsunaCoreEngine {
         this.headGroup.position.set(0, 0.45, 0);
         this.manGroup.add(this.headGroup);
 
-        // Skull Mesh (Cranium & Face Structure)
+        // Warm ceramic faceplate with auburn hair creates an anime-inspired robotic avatar.
         const skullGeo = new THREE.IcosahedronGeometry(0.85, 2);
         skullGeo.scale(0.88, 1.15, 0.95);
         const skullMat = new THREE.MeshStandardMaterial({
-            color: 0x1a1a24,
-            roughness: 0.25,
-            metalness: 0.85,
-            emissive: 0x3d000a,
-            emissiveIntensity: 0.5
+            color: 0xf6c9af,
+            roughness: 0.48,
+            metalness: 0.28,
+            emissive: 0x2a0a10,
+            emissiveIntensity: 0.25
         });
         this.skullMesh = new THREE.Mesh(skullGeo, skullMat);
         this.headGroup.add(this.skullMesh);
+
+        const hairMat = new THREE.MeshStandardMaterial({ color: 0x9d4f32, roughness: 0.38, metalness: 0.25, emissive: 0x210507 });
+        this.hairGroup = new THREE.Group();
+        const fringe = new THREE.Mesh(new THREE.SphereGeometry(0.76, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.45), hairMat);
+        fringe.scale.set(1.0, 1.08, 1.02);
+        fringe.position.set(0, 0.38, 0.08);
+        this.hairGroup.add(fringe);
+        [-1, 1].forEach((side) => {
+            const lock = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.82, 8, 12), hairMat);
+            lock.position.set(side * 0.72, -0.18, 0.10);
+            lock.rotation.z = side * -0.16;
+            this.hairGroup.add(lock);
+        });
+        this.headGroup.add(this.hairGroup);
 
         // Connected lines make the holographic structure easy to read from a distance.
         const facialGridGeo = new THREE.IcosahedronGeometry(0.88, 2);
@@ -124,24 +140,27 @@ export class AsunaCoreEngine {
         this.jawMesh.position.set(0, -0.45, 0.1);
         this.headGroup.add(this.jawMesh);
 
-        // Eyes & Ocular Pupils
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        const irisMat = new THREE.MeshBasicMaterial({ color: 0xff1e42 });
-
-        const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.095, 16, 16), eyeMat);
-        leftEye.position.set(-0.27, 0.15, 0.72);
-        const leftIris = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.02, 8, 16), irisMat);
-        leftIris.position.set(-0.27, 0.15, 0.80);
-        this.headGroup.add(leftEye, leftIris);
-
-        const rightEye = new THREE.Mesh(new THREE.SphereGeometry(0.095, 16, 16), eyeMat);
-        rightEye.position.set(0.27, 0.15, 0.72);
-        const rightIris = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.02, 8, 16), irisMat);
-        rightIris.position.set(0.27, 0.15, 0.80);
-        this.headGroup.add(rightEye, rightIris);
-
-        this.leftIris = leftIris;
-        this.rightIris = rightIris;
+        // Large ocular assemblies track the cursor independently of head movement.
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfffbf5 });
+        const irisMat = new THREE.MeshBasicMaterial({ color: 0xa86a35 });
+        const pupilMat = new THREE.MeshBasicMaterial({ color: 0x22100b });
+        const createEye = (side) => {
+            const eyeGroup = new THREE.Group();
+            eyeGroup.position.set(side * 0.27, 0.15, 0.72);
+            const eye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 20, 20), eyeMat);
+            eye.scale.set(1, 1.2, 0.65);
+            const iris = new THREE.Mesh(new THREE.SphereGeometry(0.078, 16, 16), irisMat);
+            iris.scale.z = 0.3;
+            iris.position.z = 0.10;
+            const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.037, 12, 12), pupilMat);
+            pupil.scale.z = 0.25;
+            pupil.position.z = 0.125;
+            eyeGroup.add(eye, iris, pupil);
+            this.headGroup.add(eyeGroup);
+            return eyeGroup;
+        };
+        this.leftEyeGroup = createEye(-1);
+        this.rightEyeGroup = createEye(1);
 
         // Brow Ridge & Nose Structure
         const browGeo = new THREE.BoxGeometry(0.72, 0.08, 0.22);
@@ -149,6 +168,7 @@ export class AsunaCoreEngine {
         const browMesh = new THREE.Mesh(browGeo, browMat);
         browMesh.position.set(0, 0.26, 0.70);
         this.headGroup.add(browMesh);
+        this.browMesh = browMesh;
 
         const noseGeo = new THREE.BoxGeometry(0.12, 0.32, 0.25);
         const noseMesh = new THREE.Mesh(noseGeo, browMat);
@@ -170,6 +190,16 @@ export class AsunaCoreEngine {
         const shouldersMesh = new THREE.Mesh(shouldersGeo, shouldersMat);
         shouldersMesh.position.set(0, -0.65, -0.1);
         this.torsoGroup.add(shouldersMesh);
+
+        const suitMat = new THREE.MeshStandardMaterial({ color: 0xf4f1eb, metalness: 0.52, roughness: 0.35 });
+        const redTrimMat = new THREE.MeshBasicMaterial({ color: 0xc91f42 });
+        const chest = new THREE.Mesh(new THREE.SphereGeometry(0.66, 20, 16), suitMat);
+        chest.scale.set(1.18, 0.68, 0.52);
+        chest.position.set(0, -1.03, 0.04);
+        this.torsoGroup.add(chest);
+        const chestTrim = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.04, 0.05), redTrimMat);
+        chestTrim.position.set(0, -1.0, 0.38);
+        this.torsoGroup.add(chestTrim);
 
         const collarRingGeo = new THREE.TorusGeometry(1.05, 0.04, 12, 32);
         const collarRingMat = new THREE.MeshBasicMaterial({ color: 0xff1e42 });
@@ -257,6 +287,8 @@ export class AsunaCoreEngine {
         this.targetHeadRotation.yaw = x * 0.75;
         this.targetHeadRotation.pitch = -y * 0.45;
         this.targetHeadRotation.roll = x * -0.15;
+        this.targetEyeAim.x = x * 0.055;
+        this.targetEyeAim.y = y * 0.04;
     }
 
     onPointerDown() {
@@ -301,6 +333,8 @@ export class AsunaCoreEngine {
         this.currentHeadRotation.yaw += (this.targetHeadRotation.yaw - this.currentHeadRotation.yaw) * 0.08;
         this.currentHeadRotation.pitch += (this.targetHeadRotation.pitch - this.currentHeadRotation.pitch) * 0.08;
         this.currentHeadRotation.roll += (this.targetHeadRotation.roll - this.currentHeadRotation.roll) * 0.08;
+        this.currentEyeAim.x += (this.targetEyeAim.x - this.currentEyeAim.x) * 0.16;
+        this.currentEyeAim.y += (this.targetEyeAim.y - this.currentEyeAim.y) * 0.16;
 
         if (this.headGroup) {
             this.headGroup.rotation.y = this.currentHeadRotation.yaw;
@@ -335,12 +369,18 @@ export class AsunaCoreEngine {
         }
 
         // Eye Iris Pulsation
-        if (this.leftIris && this.rightIris) {
-            const irisScale = this.state === 'SPEAKING' || this.state === 'THINKING'
-                ? 1.0 + Math.sin(time * 12) * 0.25
-                : 1.0;
-            this.leftIris.scale.set(irisScale, irisScale, 1);
-            this.rightIris.scale.set(irisScale, irisScale, 1);
+        if (this.leftEyeGroup && this.rightEyeGroup) {
+            const blink = this.clickPulse > 0.45 ? 0.35 : 1;
+            this.leftEyeGroup.position.set(-0.27 + this.currentEyeAim.x, 0.15 + this.currentEyeAim.y, 0.72);
+            this.rightEyeGroup.position.set(0.27 + this.currentEyeAim.x, 0.15 + this.currentEyeAim.y, 0.72);
+            this.leftEyeGroup.scale.y = blink;
+            this.rightEyeGroup.scale.y = blink;
+        }
+        if (this.browMesh) {
+            this.browMesh.rotation.z = this.clickPulse * Math.sin(time * 24) * 0.18;
+        }
+        if (this.hairGroup) {
+            this.hairGroup.rotation.z = Math.sin(time * 1.8) * 0.035 + this.currentHeadRotation.roll * 0.25;
         }
 
         // Energy Rings & Particles Rotation

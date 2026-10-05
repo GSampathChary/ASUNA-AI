@@ -96,10 +96,29 @@ class AsunaHumanoidPainter extends CustomPainter {
     skullPath.quadraticBezierTo(rightCheek.dx + 10, headCenter.dy - headRadius * 0.6, topHead.dx, topHead.dy);
     skullPath.close();
 
+    // Warm ceramic face and auburn hair mirror the desktop Asuna avatar.
     final headPaint = Paint()
-      ..color = const Color(0xFF1A1A24)
+      ..color = const Color(0xFFF6C9AF)
       ..style = PaintingStyle.fill;
     canvas.drawPath(skullPath, headPaint);
+
+    final hairPaint = Paint()..color = const Color(0xFF9D4F32);
+    final fringe = Path()
+      ..moveTo(topHead.dx - headRadius * 0.62, topHead.dy + headRadius * 0.33)
+      ..quadraticBezierTo(topHead.dx, topHead.dy - headRadius * 0.28, topHead.dx + headRadius * 0.62, topHead.dy + headRadius * 0.33)
+      ..lineTo(topHead.dx + headRadius * 0.36, topHead.dy + headRadius * 0.18)
+      ..quadraticBezierTo(topHead.dx, topHead.dy + headRadius * 0.42, topHead.dx - headRadius * 0.36, topHead.dy + headRadius * 0.18)
+      ..close();
+    canvas.drawPath(fringe, hairPaint);
+    for (final side in [-1.0, 1.0]) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(headCenter.dx + side * headRadius * 0.76, headCenter.dy + headRadius * 0.22), width: headRadius * 0.17, height: headRadius * 1.15),
+          const Radius.circular(10),
+        ),
+        hairPaint,
+      );
+    }
 
     // Wireframe Mesh & Facial Grid Overlay
     final wireframePaint = Paint()
@@ -123,14 +142,19 @@ class AsunaHumanoidPainter extends CustomPainter {
     final leftEyePos = Offset(headCenter.dx - headRadius * 0.36 + headOffsetX * 0.2, headCenter.dy - headRadius * 0.15 + headOffsetY * 0.2);
     final rightEyePos = Offset(headCenter.dx + headRadius * 0.36 + headOffsetX * 0.2, headCenter.dy - headRadius * 0.15 + headOffsetY * 0.2);
 
-    final eyeGlowPaint = Paint()..color = Colors.white;
-    final pupilPaint = Paint()..color = const Color(0xFFFF1E42);
+    final eyeGlowPaint = Paint()..color = const Color(0xFFFFFBF5);
+    final irisPaint = Paint()..color = const Color(0xFFA86A35);
+    final pupilPaint = Paint()..color = const Color(0xFF22100B);
+    final eyeAim = Offset(yaw * 2.8, pitch * 2.2);
+    final blink = state == 'CLICKING' ? 0.45 : 1.0;
 
-    canvas.drawCircle(leftEyePos, 7.5, eyeGlowPaint);
-    canvas.drawCircle(leftEyePos, 4.0, pupilPaint);
+    canvas.drawOval(Rect.fromCenter(center: leftEyePos, width: 15, height: 17 * blink), eyeGlowPaint);
+    canvas.drawCircle(leftEyePos + eyeAim, 4.5 * blink, irisPaint);
+    canvas.drawCircle(leftEyePos + eyeAim, 2.3 * blink, pupilPaint);
 
-    canvas.drawCircle(rightEyePos, 7.5, eyeGlowPaint);
-    canvas.drawCircle(rightEyePos, 4.0, pupilPaint);
+    canvas.drawOval(Rect.fromCenter(center: rightEyePos, width: 15, height: 17 * blink), eyeGlowPaint);
+    canvas.drawCircle(rightEyePos + eyeAim, 4.5 * blink, irisPaint);
+    canvas.drawCircle(rightEyePos + eyeAim, 2.3 * blink, pupilPaint);
 
     // Brow Ridge & Nose Line
     final browPaint = Paint()
@@ -147,6 +171,19 @@ class AsunaHumanoidPainter extends CustomPainter {
       Offset(headCenter.dx, leftEyePos.dy + 18),
       browPaint,
     );
+    if (state == 'CLICKING') {
+      final smilePaint = Paint()
+        ..color = const Color(0xFFC91F42)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2;
+      canvas.drawArc(
+        Rect.fromCenter(center: Offset(headCenter.dx, chinPoint.dy - 20), width: headRadius * 0.36, height: headRadius * 0.18),
+        0,
+        pi,
+        false,
+        smilePaint,
+      );
+    }
     // 5. Orbiting Swarm Particles
     for (var p in particles) {
       final pOffset = Offset(
