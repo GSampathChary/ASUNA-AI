@@ -22,7 +22,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from app.api.websocket import router as ws_router
+from app.api.websocket import router as ws_router, ws_manager
 from app.api.auth import router as auth_router
 from app.tools.system_tools import register_standard_tools
 from app.ai.llm.provider import get_llm_provider
@@ -64,6 +64,8 @@ class ChatRequest(BaseModel):
     history: list[dict[str, str]] = []
     client_time: str | None = None
     client_timezone: str | None = None
+    user_email: str | None = "user@asuna.ai"
+    target_device: str | None = "local"
 
 
 # A lightweight safety rail for the initial public deployment. Replace with
@@ -73,8 +75,21 @@ CHAT_RATE_WINDOW_SECONDS = 600
 CHAT_RATE_LIMIT = 30
 
 
+@app.get("/api/devices/connected")
+async def get_connected_devices(email: str = "user@asuna.ai", x_asuna_session: str | None = Header(default=None)):
+    """Returns real-time online devices connected under the specified user account."""
+    if not ws_manager.valid_session(email, x_asuna_session):
+        raise HTTPException(status_code=401, detail="Pair this browser before viewing device status.")
+    devices = ws_manager.get_user_devices(email)
+    return {
+        "email": email,
+        "connected_devices": devices,
+        "count": len(devices)
+    }
+
+
 @app.post("/api/chat")
-async def chat(req: ChatRequest, request: Request):
+async def chat(req: ChatRequest, request: Request, x_asuna_session: str | None = Header(default=None)):
     """Answer a conversational request without exposing model credentials to clients."""
     import time
     client_id = request.headers.get("x-forwarded-for", request.client.host).split(",")[0].strip()
@@ -84,19 +99,37 @@ async def chat(req: ChatRequest, request: Request):
         raise HTTPException(status_code=429, detail="Too many requests. Please try again in a few minutes.")
     chat_requests[client_id] = [*recent, now]
     messages = [*req.history[-8:], {"role": "user", "content": req.message}]
-    current_time = req.client_time or datetime.now(timezone.utc).isoformat()
+    current_time = req.client_time or datetime.now(timezone.utc).strftime("%A, %B %d, %Y %I:%M %p UTC")
     timezone_name = req.client_timezone or "UTC"
+    user_email = req.user_email or "user@asuna.ai"
+
+    # Process cross-device intent
+    from app.ai.intent.intent_engine import intent_engine
+    extracted = intent_engine.process_query(req.message)
+    target_dev = req.target_device if req.target_device and req.target_device != "local" else extracted.target_device
+
+    remote_status = None
+    if target_dev in ["laptop", "mobile"]:
+        remote_status = await ws_manager.relay_remote_command(
+            user_email,
+            x_asuna_session,
+            target_dev,
+            {"action": extracted.normalized_intent, "command": req.message, "args": extracted.arguments}
+        )
+
     system_context = (
-        f"The user's current local date/time is {current_time} in timezone {timezone_name}. "
-        "Use this as the authoritative current date/time. For current events, live scores, weather, "
-        "or other changing facts, use available search grounding and clearly state uncertainty if it is unavailable."
+        f"User Account: {user_email}.\n"
+        f"Target Device: {target_dev} (Status: {remote_status.get('status') if remote_status else 'local'}).\n"
+        f"User's Local Date and Time: {current_time} (Timezone: {timezone_name}). "
+        f"Server UTC Timestamp: {datetime.now(timezone.utc).isoformat()}.\n"
+        "This date and time is authoritative and accurate. Always use this date when asked about today's date, time, or current calendar day."
     )
     try:
         response = await get_llm_provider().generate_response(messages, system_context=system_context)
     except RuntimeError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     provider = "gemini" if os.getenv("GEMINI_API_KEY") else "openai" if os.getenv("OPENAI_API_KEY") else "local-fallback"
-    return {"reply": response.content, "provider": provider}
+    return {"reply": response.content, "provider": provider, "target_device": target_dev, "remote_status": remote_status}
 
 
 @app.post("/api/execute_action")

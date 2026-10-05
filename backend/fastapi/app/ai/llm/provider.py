@@ -48,7 +48,7 @@ class OpenAIResponsesProvider(BaseLLMProvider):
         payload = json.dumps({
             "model": os.getenv("OPENAI_MODEL", "gpt-5"),
             "instructions": (
-                "You are Asuna, a thoughtful personal AI assistant. Give accurate, concise, useful answers. "
+                "You are JARVIS, a courteous, articulate personal AI assistant. Address the user as Sir or Boss when natural. "
                 "Never claim to have controlled a device or accessed camera, microphone, files, or other apps unless a trusted agent explicitly reports success. "
                 "For consequential device actions, explain what will happen and ask for confirmation. "
                 f"{system_context}"
@@ -92,29 +92,43 @@ class GeminiProvider(BaseLLMProvider):
         for message in messages:
             role = "model" if message.get("role") == "assistant" else "user"
             contents.append({"role": role, "parts": [{"text": message.get("content", "")} ]})
-        # Flash is optimized for low latency.  The discovery fallback below
-        # keeps deployments working if a project cannot access this alias.
+        # Flash is optimized for low latency.
         model = _resolved_gemini_model or os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"
-        latest_request_terms = (
-            "today", "current", "latest", "recent", "news", "score", "match", "weather",
-            "date", "time", "price", "stock", "election", "who won",
+
+        last_msg = messages[-1].get("content", "").lower() if messages else ""
+        date_time_keywords = (
+            "today", "date", "time", "day", "month", "year", "clock", "now", "calendar"
         )
-        latest_request = any(term in messages[-1].get("content", "").lower() for term in latest_request_terms) if messages else False
+        is_date_time_query = any(kw in last_msg for kw in date_time_keywords)
+
+        # Only invoke external Google search for explicitly live data queries, avoiding search latency & date confusion on simple chat/date queries.
+        search_triggers = (
+            "latest news", "recent news", "live score", "match result", "current weather",
+            "stock price", "who won", "election result", "breaking news"
+        )
+        needs_search = any(term in last_msg for term in search_triggers) and not is_date_time_query
+
+        system_instruction_text = (
+            f"CRITICAL SYSTEM CONTEXT:\n{system_context}\n\n"
+            "IDENTITY AND PERSONA:\n"
+            "You are JARVIS, Tony Stark's advanced personal AI assistant. You speak with a polished, highly intelligent, "
+            "courteous, and slightly witty tone. Address the user respectfully as 'Sir', 'Boss', or 'Mr. Stark'.\n\n"
+            "CROSS-DEVICE CONTROL CAPABILITIES:\n"
+            "You are linked to a secure multi-device network connecting the user's Laptop (Windows/PC), Mobile Phone (Android/iOS), "
+            "and Web interfaces under their account. When the user asks to perform an action on a specific device "
+            "(e.g., 'open YouTube on my laptop', 'turn on flashlight on my phone', 'set volume to 80% on PC', 'check battery on laptop'), "
+            "acknowledge the cross-device command smoothly in JARVIS character (e.g., 'Right away, Sir. Dispatching command to your laptop.').\n\n"
+            "ACCURACY RULES:\n"
+            "When answering questions about today's date, current time, day of the week, month, or year, "
+            "you MUST use the authoritative date/time provided in the system context above. Start with a direct answer."
+        )
+
         request_body = {
-            "systemInstruction": {"parts": [{"text": (
-                "You are Asuna, a helpful, accurate personal AI assistant. Start with the direct answer, "
-                "then add only the detail needed to be useful. Answer naturally and clearly. "
-                "Never claim device control or sensor access unless a trusted paired device agent confirms it. "
-                f"{system_context}"
-            )}]},
+            "systemInstruction": {"parts": [{"text": system_instruction_text}]},
             "contents": contents,
-            # Keeping ordinary chat answers bounded reduces generation time
-            # while leaving enough room for a helpful explanation.
             "generationConfig": {"temperature": temperature, "maxOutputTokens": 1024},
         }
-        # Gemini's Google Search grounding supplies current information only
-        # when it is relevant, avoiding extra latency for ordinary chat.
-        if latest_request:
+        if needs_search:
             request_body["tools"] = [{"google_search": {}}]
         payload = json.dumps(request_body).encode("utf-8")
 
@@ -175,7 +189,12 @@ class GeminiProvider(BaseLLMProvider):
             else:
                 _resolved_gemini_model = model
             parts = result["candidates"][0]["content"]["parts"]
-            return LLMResponse(content="".join(part.get("text", "") for part in parts))
+            text_parts = [
+                part.get("text", "")
+                for part in parts
+                if isinstance(part, dict) and "text" in part and not part.get("thought", False)
+            ]
+            return LLMResponse(content="".join(text_parts) if text_parts else "I could not generate a response.")
         except urllib.error.HTTPError as error:
             err_body = error.read().decode("utf-8", errors="ignore") if hasattr(error, "read") else ""
             if error.code == 400 or error.code == 403:

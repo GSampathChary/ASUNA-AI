@@ -51,3 +51,45 @@ This guide walks you through fixing request/response errors and deploying Asuna 
    ```
 2. Open your Vercel URL, type a prompt (e.g. "Hello Asuna"), and click **Send**.
 3. If the server was sleeping, wait ~30 seconds for the first request while Render boots up. Subsequent requests will be instant!
+
+---
+
+## 4. JARVIS device pairing and remote control
+
+Set a strong random `ASUNA_AGENT_TOKEN` in Render and in your local `.env`. This is a pairing secret, not an email password: do not put it in `VITE_*` variables or commit it to Git.
+
+Start the backend locally:
+
+```powershell
+cd backend\fastapi
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+Start the web HUD in another terminal:
+
+```powershell
+cd apps\web\asuna-web
+npm install
+$env:VITE_API_BASE_URL="http://localhost:8000"
+npm run dev
+```
+
+Open the HUD, choose the same account email on every device, and select **Pair device**. Enter the server's pairing token. It is held only for the current browser session.
+
+Start the Windows agent in a third terminal:
+
+```powershell
+cd E:\AI-Portfolio\Projects\asuna-ai
+$env:ASUNA_USER_EMAIL="yourname@gmail.com"
+$env:ASUNA_WS_URL="ws://localhost:8000/ws"
+$env:ASUNA_AGENT_TOKEN="the-same-long-random-token"
+$env:ASUNA_DEVICE_ID="my-windows-laptop"
+python -m agents.windows.main
+```
+
+For deployed services use `wss://your-render-domain/ws` for `ASUNA_WS_URL`. Render free instances may sleep, which makes persistent WebSocket device routing unsuitable; use an always-on WebSocket-capable host for dependable remote control.
+
+Supported Windows actions are opening YouTube/browser and exact system volume (requires `pycaw`, installed through the backend requirements on Windows). A browser running on a phone becomes the mobile agent when paired. It can open web destinations and can toggle the torch only on Android browsers that expose the secure-context camera torch API. A web app cannot universally control iOS flashlight, phone volume, calls, or native apps.

@@ -8,6 +8,7 @@ class ExtractedIntent(BaseModel):
     normalized_intent: str
     primary_language: str  # en, te, hi, te_en, hi_en
     tool_name: Optional[str] = None
+    target_device: str = "local"  # local, laptop, mobile, all
     arguments: Dict[str, Any] = {}
     confidence: float = 0.90
 
@@ -30,6 +31,7 @@ class IntentEngine:
         (r"(?i)send\s+(.*)\s+to\s+(.*)", "send_message"),
 
         # Volume & Media controls (Telugu / Hindi / English)
+        (r"(?i)\b(?:set|change|make)\s+(?:the\s+)?(?:volume|sound)\s+(?:to\s+)?(\d{1,3})\s*%?", "set_volume"),
         (r"(?i)(volume|sound)\b.*\b(thagginchu|thagga|kam\s+karo|low\s+cheyyi|dheema)", "volume_down"),
         (r"(?i)(volume|sound)\b.*\b(penchu|tez\s+karo|ekkuva\s+cheyyi|high\s+cheyyi)", "volume_up"),
         (r"(?i)(song|video|music)\b.*\b(pause\s+cheyyi|rok\0|apuko|apu|stop)", "media_pause"),
@@ -49,6 +51,12 @@ class IntentEngine:
 
         lang = "te_en" if is_telugu else "hi_en" if is_hindi else "en"
 
+        target_device = "local"
+        if any(term in lower for term in ["laptop", "pc", "desktop", "computer", "windows"]):
+            target_device = "laptop"
+        elif any(term in lower for term in ["mobile", "phone", "android", "cellphone"]):
+            target_device = "mobile"
+
         for pattern, intent_name in self.PATTERNS:
             match = re.search(pattern, clean_query)
             if match:
@@ -62,9 +70,14 @@ class IntentEngine:
                     tool_name = "toggle_flashlight"
 
                 elif intent_name == "open_application":
-                    raw_app = groups[0] if len(groups) > 0 else "browser"
-                    clean_app = re.sub(r"(?i)^(asuna\s+|hey\s+asuna\s+)", "", raw_app).strip()
-                    clean_app = clean_app.replace("open", "").replace("cheyyi", "").replace("karo", "").replace("kholo", "").strip()
+                    # The English pattern stores the app name in the second
+                    # capture group; the multilingual pattern uses the first.
+                    raw_app = groups[-1] if len(groups) > 1 else (groups[0] if groups else "browser")
+                    if len(groups) > 1 and re.search(r"(?i)(open|teeyyi|karo|kholo|chalu)", groups[-1] or ""):
+                        raw_app = groups[0]
+                    clean_app = re.sub(r"(?i)^(asuna\s+|jarvis\s+|hey\s+asuna\s+|hey\s+jarvis\s+)", "", raw_app).strip()
+                    clean_app = re.sub(r"(?i)\s+on\s+(?:my\s+)?(?:laptop|pc|desktop|computer|windows|mobile|phone|android|cellphone)\b.*$", "", clean_app)
+                    clean_app = clean_app.replace("open", "").replace("cheyyi", "").replace("karo", "").replace("kholo", "").strip(" ,.")
                     if not clean_app:
                         clean_app = "browser"
 
@@ -86,6 +99,11 @@ class IntentEngine:
                     args = {"mode": "photo"}
                     tool_name = "open_camera"
 
+                elif intent_name == "set_volume":
+                    level = max(0, min(100, int(groups[0])))
+                    args = {"level": level}
+                    tool_name = "set_volume"
+
                 elif intent_name in ["volume_down", "volume_up", "media_pause", "media_play"]:
                     cmd = "volume_down" if intent_name == "volume_down" else "volume_up" if intent_name == "volume_up" else "pause" if intent_name == "media_pause" else "play"
                     args = {"command": cmd}
@@ -101,6 +119,7 @@ class IntentEngine:
                     normalized_intent=intent_name,
                     primary_language=lang,
                     tool_name=tool_name,
+                    target_device=target_device,
                     arguments=args,
                     confidence=0.95
                 )
@@ -110,6 +129,7 @@ class IntentEngine:
             normalized_intent="chatgpt_general_knowledge",
             primary_language=lang,
             tool_name=None,
+            target_device=target_device,
             arguments={},
             confidence=0.85
         )

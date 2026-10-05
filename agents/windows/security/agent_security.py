@@ -9,6 +9,12 @@ class AgentSecurityFilter:
         "scroll",
         "type_text",
         "open_application",
+        "open_browser",
+        "set_volume",
+        "volume_up",
+        "volume_down",
+        "media_pause",
+        "media_play",
         "take_screenshot",
         "get_system_info"
     }
