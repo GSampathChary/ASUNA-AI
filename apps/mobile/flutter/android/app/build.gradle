@@ -7,13 +7,34 @@ plugins {
 android {
     namespace "com.asunaai.asuna_mobile"
     compileSdk flutter.compileSdkVersion
+    // Required by the speech and hand-tracking native plugins. NDK releases
+    // are backward compatible, so one current version serves both plugins.
+    ndkVersion "28.2.13676358"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 
     defaultConfig {
         applicationId "com.asunaai.asuna_mobile"
-        minSdk 23
+        minSdkVersion 24
         targetSdk flutter.targetSdkVersion
         versionCode flutter.versionCode
         versionName flutter.versionName
+    }
+
+    // A release APK must be signed before Android will install it.  This is
+    // intentionally the local debug key for shareable development builds;
+    // replace it with a private upload/release key before publishing.
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
     }
 }
 

@@ -98,6 +98,8 @@ Supported Windows actions are opening YouTube/browser and exact system volume (r
 
 The native Android companion can receive paired actions for flashlight, media volume, and launching YouTube or Chrome. It must remain open in the foreground while serving as an agent; Android does not permit a normal app to keep a permanent network connection in the background without a user-visible foreground service.
 
+The current Asuna-AI mobile client also includes normal chat, push-to-talk voice chat, spoken answers, camera-based hand gestures, and a 3D diamond core that matches the web HUD. On first launch it requests only the permissions those features require: microphone, camera, notifications, and Bluetooth-headset access. It does not request contacts, SMS, call logs, or storage because those features are not implemented.
+
 ```powershell
 cd E:\AI-Portfolio\Projects\asuna-ai\apps\mobile\flutter
 flutter doctor
@@ -105,6 +107,8 @@ flutter pub get
 flutter devices
 flutter run --release
 ```
+
+For hand tracking, use Flutter with Dart 3.11+ and JDK 17. The hand-tracking plugin uses an on-device MediaPipe model; open **Hand controls**, approve camera access, and pinch thumb plus index finger to submit the current typed message. A two-finger gesture is detected as a secondary action. For reliable speech, tap **Voice chat** first, say your command or question, then pause; Android's built-in recognition cannot provide an always-listening wake word while the app is in the background.
 
 If `flutter build apk` reports `deleted Android v1 embedding`, remove the obsolete local file left by an older project template, then rebuild:
 

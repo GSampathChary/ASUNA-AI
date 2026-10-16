@@ -1,7 +1,7 @@
 name: asuna_mobile
 description: Paired Android companion for Asuna cross-device control.
 publish_to: "none"
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
@@ -9,6 +9,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # 0.12.1 needs Dart 3.12; keep the newest Dart-3.11-compatible release.
+  camera: 0.12.0+2
+  flutter_tts: ^4.2.5
+  # 2.3 remains compatible with the project's Dart 3.11 Flutter SDK.
+  hand_landmarker: ^2.3.0
+  http: ^1.6.0
+  permission_handler: ^12.0.1
+  speech_to_text: ^7.4.0
   web_socket_channel: ^3.0.3
 
 dev_dependencies:

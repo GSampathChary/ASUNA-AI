@@ -7,7 +7,12 @@ build/
 dist/
 .dart_tool/
 .flutter-plugins
+apps/mobile/flutter/.flutter-plugins-dependencies
+apps/mobile/flutter/flutter-build.log
+apps/mobile/flutter/build/
+apps/mobile/flutter/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 apps/mobile/flutter/android/local.properties
 apps/mobile/flutter/android/.gradle/
+apps/mobile/flutter/android/.kotlin/
 .idea/
 .vscode/

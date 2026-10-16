@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Asuna-AI 3D diamond">
+  <defs>
+    <radialGradient id="bg" cx="32%" cy="20%" r="95%">
+      <stop offset="0" stop-color="#35295e"/>
+      <stop offset="0.55" stop-color="#15132b"/>
+      <stop offset="1" stop-color="#080814"/>
+    </radialGradient>
+    <linearGradient id="top" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fffbe9"/>
+      <stop offset="0.33" stop-color="#f7c7ff"/>
+      <stop offset="1" stop-color="#8b4dff"/>
+    </linearGradient>
+    <linearGradient id="left" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#d9aeff"/>
+      <stop offset="1" stop-color="#5521b8"/>
+    </linearGradient>
+    <linearGradient id="right" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#a96dff"/>
+      <stop offset="1" stop-color="#30106f"/>
+    </linearGradient>
+    <linearGradient id="bottom" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#7b30eb"/>
+      <stop offset="1" stop-color="#1b0750"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="17"/></filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <path d="M256 67 439 201 256 455 73 201Z" fill="#9d5cff" opacity=".36" filter="url(#glow)"/>
+  <path d="M256 68 437 200 256 269 75 200Z" fill="url(#top)"/>
+  <path d="m75 200 181 69v185L75 200Z" fill="url(#left)"/>
+  <path d="m437 200-181 69v185l181-254Z" fill="url(#right)"/>
+  <path d="m75 200 109-41 72 110L75 200Zm181 69 72-110 109 41-181 69Z" fill="#f6d6ff" opacity=".55"/>
+  <path d="m184 159 72-91 72 91-72 110-72-110Z" fill="#fff9ff" opacity=".42"/>
+  <path d="M256 68v201l72-110-72-91Z" fill="#ffffff" opacity=".23"/>
+  <path d="M256 269 184 159 75 200l181 254 181-254-109-41-72 110Z" fill="url(#bottom)" opacity=".75"/>
+  <path d="M126 186 256 91l130 95" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round" opacity=".55"/>
+  <circle cx="174" cy="140" r="10" fill="#fff" opacity=".85"/>
+</svg>

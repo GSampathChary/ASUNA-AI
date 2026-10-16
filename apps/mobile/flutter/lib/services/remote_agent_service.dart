@@ -13,6 +13,10 @@ class RemoteAgentService {
   StreamSubscription<dynamic>? _subscription;
   String _status = 'Offline';
   String get status => _status;
+  String? _email;
+  String? _sessionToken;
+  String? get email => _email;
+  String? get sessionToken => _sessionToken;
   void Function(String status)? onStatus;
   void Function(String message)? onEvent;
 
@@ -46,6 +50,8 @@ class RemoteAgentService {
 
   Future<void> _handleMessage(Map<String, dynamic> message) async {
     if (message['type'] == 'registered') {
+      _email = message['email'] as String?;
+      _sessionToken = message['session_token'] as String?;
       _status = 'Paired and online';
       onStatus?.call(_status);
       onEvent?.call('Secure gateway paired.');
@@ -72,6 +78,7 @@ class RemoteAgentService {
     await _channel?.sink.close();
     _subscription = null;
     _channel = null;
+    _sessionToken = null;
     _setOffline();
   }
 
