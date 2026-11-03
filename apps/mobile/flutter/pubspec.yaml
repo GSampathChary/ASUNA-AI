@@ -16,6 +16,7 @@ dependencies:
   hand_landmarker: ^2.3.0
   http: ^1.6.0
   permission_handler: ^12.0.1
+  shared_preferences: ^2.5.4
   speech_to_text: ^7.4.0
   web_socket_channel: ^3.0.3
 
