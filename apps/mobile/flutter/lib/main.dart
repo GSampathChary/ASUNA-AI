@@ -161,6 +161,8 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
   bool _listening = false;
   bool _permissionsRequested = false;
   List<Map<String, dynamic>> _connectedDevices = [];
+  double? _speechRate;
+  bool _voiceOnly = false;
 
   late final RemoteAgentService _remoteAgent;
   late final List<_ChatMessage> _messages;
@@ -192,7 +194,12 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
     final granted = await _permissions.requestRequiredPermissions();
     if (!mounted) return;
     setState(() => _permissionsRequested = true);
+    // Load persisted voice settings
+    final prefs = await SharedPreferences.getInstance();
+    _speechRate = double.tryParse(prefs.getString('voice_rate') ?? '0.48') ?? 0.48;
+    _voiceOnly = prefs.getBool('voice_only') ?? false;
     await _voice.initialize(onError: _showNotice);
+    await _voice.setSpeechRate(_speechRate!);
     final denied = granted.entries
         .where((e) => e.value != PermissionStatus.granted)
         .map((e) => e.key.toString().split('.').last)
@@ -215,7 +222,9 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
     if (message.isEmpty || _sending) return;
     setState(() {
       _messages.add(_ChatMessage(message, true));
-      _messages.add(_ChatMessage('Asuna is processing…', false));
+      if (!_voiceOnly) {
+        _messages.add(_ChatMessage('Asuna is processing…', false));
+      }
       _sending = true;
       _state = 'THINKING';
       _statusText = 'Processing…';
@@ -243,7 +252,9 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
       );
       if (!mounted) return;
       setState(() {
-        _messages[pendingIndex] = _ChatMessage(reply, false);
+        if (!_voiceOnly) {
+          _messages[pendingIndex] = _ChatMessage(reply, false);
+        }
         _state = 'SPEAKING';
         _statusText = 'Asuna online';
       });
@@ -433,7 +444,49 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
             side: const BorderSide(color: Colors.white54)),
         title: const Text('⚙️ Asuna-AI Settings',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: _dialogField(api, 'Backend API URL', TextInputType.url),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _dialogField(api, 'Backend API URL', TextInputType.url),
+            const SizedBox(height: 10),
+            // Speech rate slider
+            Row(
+              children: [
+                const Text('Speech Speed', style: TextStyle(color: Colors.white70)),
+                Expanded(
+                  child: Slider(
+                    min: 0.3,
+                    max: 1.0,
+                    divisions: 7,
+                    value: _speechRate ?? 0.48,
+                    label: (_speechRate ?? 0.48).toStringAsFixed(2),
+                    onChanged: (v) async {
+                      setState(() => _speechRate = v);
+                      await _voice.setSpeechRate(v);
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('voice_rate', v.toString());
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // Voice‑only toggle
+            Row(
+              children: [
+                const Text('Voice‑Only Replies', style: TextStyle(color: Colors.white70)),
+                Switch.adaptive(
+                  value: _voiceOnly,
+                  onChanged: (v) async {
+                    setState(() => _voiceOnly = v);
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('voice_only', v);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
         actions: [
           TextButton(onPressed: _permissions.openSettings, child: const Text('App Permissions')),
           FilledButton(
