@@ -3,6 +3,9 @@ import { AsunaCoreWeb } from './components/AsunaCoreWeb';
 import { CameraGesturePanel } from './components/CameraGesturePanel';
 import { useVoiceAssistant } from './hooks/useVoiceAssistant';
 import './asuna.css';
+import AnimeCharacter from './AnimeCharacter';
+import './AnimeCharacter.css';
+
 
 const clock = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const welcomeMessage = (nickname) => ({ sender: 'asuna', text: `Hello${nickname ? `, ${nickname}` : ''}. Asuna is online. Pair this device to enable cross-device commands.`, time: clock() });
@@ -90,6 +93,11 @@ export default function App() {
   const [pairingToken, setPairingToken] = useState(() => sessionStorage.getItem('asuna_pairing_token') || '');
   const [sessionToken, setSessionToken] = useState('');
   const [installPrompt, setInstallPrompt] = useState(null);
+  const [showCharacter, setShowCharacter] = useState(() => {
+    const stored = localStorage.getItem('show_character');
+    return stored ? JSON.parse(stored) : true;
+  });
+
   const messagesEndRef = useRef(null);
 
 
@@ -259,6 +267,8 @@ export default function App() {
         </button>
         {installPrompt && <button className="outline-button" onClick={installApp}>↓ Install app</button>}
         <button className="outline-button" onClick={() => setCameraOpen((open) => !open)}>📷 {cameraOpen ? 'Camera on' : 'Enable camera'}</button>
+<button className="outline-button" onClick={() => setShowCharacter(prev => { const next = !prev; localStorage.setItem('show_character', JSON.stringify(next)); return next; })}>👾 {showCharacter ? 'Hide' : 'Show'} Character</button>
+<button className="outline-button" onClick={() => setShowCharacter(prev => { const next = !prev; localStorage.setItem('show_character', JSON.stringify(next)); return next; })}>👾 {showCharacter ? 'Hide' : 'Show'} Character</button>
       </div>
     </header>
     <div className="main-grid">
@@ -282,5 +292,6 @@ export default function App() {
         <p className="privacy-note">Remote execution requires a paired device.<br />{nickname ? `Profile: ${nickname} · ` : ''}Account: {userEmail || 'Not set'}.</p>
       </section>
     </div>
-  </main>;
+  {showCharacter && <AnimeCharacter />}
+</main>;
 }

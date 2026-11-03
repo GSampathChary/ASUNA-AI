@@ -10,7 +10,7 @@ import 'services/native_device_service.dart';
 import 'services/permission_service.dart';
 import 'services/remote_agent_service.dart';
 import 'services/voice_service.dart';
-
+import 'widgets/eye_tracking_character.dart';
 void main() => runApp(const AsunaApp());
 
 class AsunaApp extends StatelessWidget {
@@ -163,6 +163,7 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
   List<Map<String, dynamic>> _connectedDevices = [];
   double? _speechRate;
   bool _voiceOnly = false;
+  bool _characterVisible = true;
 
   late final RemoteAgentService _remoteAgent;
   late final List<_ChatMessage> _messages;
@@ -485,6 +486,89 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            // Character visibility toggle
+            Row(
+              children: [
+                const Text('Show Anime Character', style: TextStyle(color: Colors.white70)),
+                Switch.adaptive(
+                  value: _characterVisible,
+                  onChanged: (v) async {
+                    setState(() => _characterVisible = v);
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('show_character', v);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: _permissions.openSettings, child: const Text('App Permissions')),
+          FilledButton(
+            onPressed: () {
+              setState(() => _apiUrl = api.text.trim());
+              Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    api.dispose();
+    return;
+  }
+    final api = TextEditingController(text: _apiUrl);
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF18070B),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Colors.white54)),
+        title: const Text('⚙️ Asuna-AI Settings',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _dialogField(api, 'Backend API URL', TextInputType.url),
+            const SizedBox(height: 10),
+            // Speech rate slider
+            Row(
+              children: [
+                const Text('Speech Speed', style: TextStyle(color: Colors.white70)),
+                Expanded(
+                  child: Slider(
+                    min: 0.3,
+                    max: 1.0,
+                    divisions: 7,
+                    value: _speechRate ?? 0.48,
+                    label: (_speechRate ?? 0.48).toStringAsFixed(2),
+                    onChanged: (v) async {
+                      setState(() => _speechRate = v);
+                      await _voice.setSpeechRate(v);
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('voice_rate', v.toString());
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // Voice‑only toggle
+            Row(
+              children: [
+                const Text('Voice‑Only Replies', style: TextStyle(color: Colors.white70)),
+                Switch.adaptive(
+                  value: _voiceOnly,
+                  onChanged: (v) async {
+                    setState(() => _voiceOnly = v);
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('voice_only', v);
+                  },
+                ),
+              ],
+            ),
           ],
         ),
         actions: [
@@ -619,7 +703,8 @@ class _AsunaHomeScreenState extends State<AsunaHomeScreen> {
                   style: const TextStyle(fontSize: 10, color: Color(0xFF475569))),
             ]),
           ),
-          const Divider(height: 1, color: Color(0xFF1E0A0F)),
+          if (characterVisible) const EyeTrackingCharacter(),
+const Divider(height: 1, color: Color(0xFF1E0A0F)),
 
           // 3D Core
           Padding(

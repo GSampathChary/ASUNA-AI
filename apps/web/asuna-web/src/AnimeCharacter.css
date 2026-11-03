@@ -1,0 +1,8 @@
+.anime-character {
+  position: absolute;
+  width: 120px;
+  height: auto;
+  pointer-events: none;
+  transition: transform 0.1s ease-out;
+  z-index: 1000;
+}
