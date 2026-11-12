@@ -566,10 +566,13 @@ export class AsunaCoreEngine {
             // The replacement model has no skeleton. Position the helpers at
             // measured face coordinates so this static model retains the same
             // pointer-tracking eye behavior.
-            const eyeRadius = Math.max(size.y * 0.034, 0.035);
+            // Use height—not the arm-span—for facial proportions. This model
+            // has extended arms, so width-based values placed giant eyes on
+            // either side of its head.
+            const eyeRadius = Math.max(size.y * 0.018, 0.022);
             const eyeY = bounds.max.y - size.y * 0.165;
             const eyeZ = bounds.max.z + eyeRadius * 0.20;
-            const eyeSpacing = size.x * 0.072;
+            const eyeSpacing = size.y * 0.035;
             this.eyeHelpers = [-1, 1].map((side) => {
                 const helper = this.createEyeHelper(eyeRadius);
                 helper.anchor.position.set(bounds.getCenter(new THREE.Vector3()).x + side * eyeSpacing, eyeY, eyeZ);
