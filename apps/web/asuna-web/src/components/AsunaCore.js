@@ -447,19 +447,8 @@ export class AsunaCoreEngine {
         this.torsoGroup.add(skirtMesh);
 
         // -------------------------------------------------------------
-        // 5. ORBITAL SAO ENERGY RINGS & FLOATING PARTICLES
+        // 5. FLOATING PARTICLES
         // -------------------------------------------------------------
-        const whiteRingMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
-        this.goldRing = new THREE.Mesh(new THREE.TorusGeometry(2.1, 0.02, 8, 48), whiteRingMat);
-        this.goldRing.rotation.x = Math.PI / 3;
-        this.coreGroup.add(this.goldRing);
-
-        const crimsonRingMat = new THREE.MeshBasicMaterial({ color: 0xff1e42, transparent: true, opacity: 0.90 });
-        this.crimsonRing = new THREE.Mesh(new THREE.TorusGeometry(1.75, 0.025, 8, 48), crimsonRingMat);
-        this.crimsonRing.rotation.y = Math.PI / 4;
-        this.coreGroup.add(this.crimsonRing);
-
-        // Swarm Particles
         this.particleCount = 220;
         const particleGeo = new THREE.BufferGeometry();
         const positions = new Float32Array(this.particleCount * 3);
@@ -527,9 +516,7 @@ export class AsunaCoreEngine {
 
                 const bounds = new THREE.Box3().setFromObject(model);
                 const size = bounds.getSize(new THREE.Vector3());
-                // The source model is authored side-on. Rotate it toward the
-                // camera before applying pointer-driven turns, and keep it
-                // comfortably inside the central stage.
+                // Keep the model comfortably inside the central stage.
                 const scale = 3.05 / Math.max(size.y, 0.01);
                 model.scale.setScalar(scale);
 
@@ -546,6 +533,7 @@ export class AsunaCoreEngine {
                     .map((name) => model.getObjectByName(name))
                     .filter(Boolean);
                 this.eyeBaseRotations = this.eyeBones.map((eye) => eye.rotation.clone());
+                this.addReadableEyeHelpers(model);
 
                 this.characterModel = model;
                 this.coreGroup.add(model);
@@ -553,6 +541,33 @@ export class AsunaCoreEngine {
             undefined,
             (error) => console.error('Could not load the Luffy character model.', error),
         );
+    }
+
+    addReadableEyeHelpers(model) {
+        if (this.eyeBones.length !== 2) return;
+
+        model.updateMatrixWorld(true);
+        const leftPosition = this.eyeBones[0].getWorldPosition(new THREE.Vector3());
+        const rightPosition = this.eyeBones[1].getWorldPosition(new THREE.Vector3());
+        const eyeSeparation = leftPosition.distanceTo(rightPosition) / model.scale.x;
+        const eyeRadius = Math.max(eyeSeparation * 0.30, 0.035);
+        const white = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false });
+        const black = new THREE.MeshBasicMaterial({ color: 0x161018, depthTest: false, depthWrite: false });
+
+        this.eyeHelpers = this.eyeBones.map((eye) => {
+            const eyeball = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius, 20, 16), white);
+            eyeball.scale.set(0.92, 1.12, 0.50);
+            eyeball.renderOrder = 10;
+
+            const pupil = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius * 0.38, 16, 12), black);
+            pupil.position.z = eyeRadius * 0.42;
+            pupil.scale.set(0.95, 1.05, 0.45);
+            pupil.renderOrder = 11;
+
+            eyeball.add(pupil);
+            eye.add(eyeball);
+            return { eyeball, pupil, eyeRadius };
+        });
     }
 
     setSymbolType(newSymbolType) {
@@ -697,6 +712,13 @@ export class AsunaCoreEngine {
                 eye.rotation.copy(this.eyeBaseRotations[index]);
                 eye.rotation.y += this.currentEyeAim.x * 1.4;
                 eye.rotation.x -= this.currentEyeAim.y * 0.7;
+            });
+        }
+
+        if (this.eyeHelpers?.length) {
+            this.eyeHelpers.forEach(({ pupil, eyeRadius }) => {
+                pupil.position.x = this.currentEyeAim.x * eyeRadius * 3.2;
+                pupil.position.y = this.currentEyeAim.y * eyeRadius * 2.6;
             });
         }
 
@@ -870,9 +892,7 @@ export class AsunaCoreEngine {
             }
         }
 
-        // Energy Rings & Floating Motion
-        if (this.goldRing) this.goldRing.rotation.z += 0.01 * speedMultiplier;
-        if (this.crimsonRing) this.crimsonRing.rotation.x += 0.012 * speedMultiplier;
+        // Floating Motion
         if (this.crimsonLight) {
             const pulse = this.currentExpression === 'DETERMINED' ? 6.5 : 3.8;
             this.crimsonLight.intensity = pulse + Math.sin(time * 3.0) * 0.5;
