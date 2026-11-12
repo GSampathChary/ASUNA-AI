@@ -1,6 +1,8 @@
 import 'dart:math';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 class EyeTrackingCharacter extends StatefulWidget {

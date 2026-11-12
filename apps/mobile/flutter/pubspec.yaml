@@ -11,7 +11,7 @@ dependencies:
     sdk: flutter
   # 0.12.1 needs Dart 3.12; keep the newest Dart-3.11-compatible release.
   camera: 0.12.0+2
-  sensors_plus: ^2.2.0
+  sensors_plus: ^7.1.1
   flutter_tts: ^4.2.5
   # 2.3 remains compatible with the project's Dart 3.11 Flutter SDK.
   hand_landmarker: ^2.3.0
