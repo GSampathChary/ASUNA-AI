@@ -497,7 +497,7 @@ export class AsunaCoreEngine {
         this.modelLoadId = loadId;
 
         new GLTFLoader().load(
-            '/assets/monkey_d_luffy.glb',
+            '/assets/luffy_damage.glb',
             (gltf) => {
                 if (this.modelLoadId !== loadId) return;
 
@@ -533,7 +533,7 @@ export class AsunaCoreEngine {
                     .map((name) => model.getObjectByName(name))
                     .filter(Boolean);
                 this.eyeBaseRotations = this.eyeBones.map((eye) => eye.rotation.clone());
-                this.addReadableEyeHelpers(model);
+                this.addReadableEyeHelpers(model, bounds, size);
 
                 this.characterModel = model;
                 this.coreGroup.add(model);
@@ -543,30 +543,51 @@ export class AsunaCoreEngine {
         );
     }
 
-    addReadableEyeHelpers(model) {
-        if (this.eyeBones.length !== 2) return;
+    createEyeHelper(eyeRadius) {
+        const anchor = new THREE.Group();
+        const white = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false });
+        const black = new THREE.MeshBasicMaterial({ color: 0x161018, depthTest: false, depthWrite: false });
+        const eyeball = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius, 20, 16), white);
+        eyeball.scale.set(0.92, 1.12, 0.50);
+        eyeball.renderOrder = 10;
+
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius * 0.38, 16, 12), black);
+        pupil.position.z = eyeRadius * 0.42;
+        pupil.scale.set(0.95, 1.05, 0.45);
+        pupil.renderOrder = 11;
+
+        anchor.add(eyeball);
+        eyeball.add(pupil);
+        return { anchor, pupil, eyeRadius };
+    }
+
+    addReadableEyeHelpers(model, bounds, size) {
+        if (this.eyeBones.length !== 2) {
+            // The replacement model has no skeleton. Position the helpers at
+            // measured face coordinates so this static model retains the same
+            // pointer-tracking eye behavior.
+            const eyeRadius = Math.max(size.y * 0.034, 0.035);
+            const eyeY = bounds.max.y - size.y * 0.165;
+            const eyeZ = bounds.max.z + eyeRadius * 0.20;
+            const eyeSpacing = size.x * 0.072;
+            this.eyeHelpers = [-1, 1].map((side) => {
+                const helper = this.createEyeHelper(eyeRadius);
+                helper.anchor.position.set(bounds.getCenter(new THREE.Vector3()).x + side * eyeSpacing, eyeY, eyeZ);
+                model.add(helper.anchor);
+                return helper;
+            });
+            return;
+        }
 
         model.updateMatrixWorld(true);
         const leftPosition = this.eyeBones[0].getWorldPosition(new THREE.Vector3());
         const rightPosition = this.eyeBones[1].getWorldPosition(new THREE.Vector3());
         const eyeSeparation = leftPosition.distanceTo(rightPosition) / model.scale.x;
         const eyeRadius = Math.max(eyeSeparation * 0.30, 0.035);
-        const white = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false });
-        const black = new THREE.MeshBasicMaterial({ color: 0x161018, depthTest: false, depthWrite: false });
-
         this.eyeHelpers = this.eyeBones.map((eye) => {
-            const eyeball = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius, 20, 16), white);
-            eyeball.scale.set(0.92, 1.12, 0.50);
-            eyeball.renderOrder = 10;
-
-            const pupil = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius * 0.38, 16, 12), black);
-            pupil.position.z = eyeRadius * 0.42;
-            pupil.scale.set(0.95, 1.05, 0.45);
-            pupil.renderOrder = 11;
-
-            eyeball.add(pupil);
-            eye.add(eyeball);
-            return { eyeball, pupil, eyeRadius };
+            const helper = this.createEyeHelper(eyeRadius);
+            eye.add(helper.anchor);
+            return helper;
         });
     }
 
