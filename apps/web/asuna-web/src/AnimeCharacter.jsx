@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './AnimeCharacter.css';
+import characterImage from './assets/character.png';
 
 const AnimeCharacter = () => {
   const [position, setPosition] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -19,8 +20,8 @@ const AnimeCharacter = () => {
 
   return (
     <img
-      src="/assets/anime_character.png"
-      alt="Anime Character"
+      src={characterImage}
+      alt="Luffy character"
       className="anime-character"
       style={style}
     />

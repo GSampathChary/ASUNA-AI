@@ -6,6 +6,7 @@
  */
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 export class AsunaCoreEngine {
     constructor(containerElement, symbolType = 'humanoid') {
@@ -59,6 +60,7 @@ export class AsunaCoreEngine {
         this.scene.add(this.coreGroup);
 
         this.buildAsunaCharacterGeometry();
+        this.loadLuffyModel();
         this.setupLighting();
 
         this.clock = new THREE.Clock();
@@ -499,9 +501,50 @@ export class AsunaCoreEngine {
         this.scene.add(this.burstGroup);
     }
 
+    loadLuffyModel() {
+        const loadId = (this.modelLoadId || 0) + 1;
+        this.modelLoadId = loadId;
+
+        new GLTFLoader().load(
+            '/assets/monkey_d_luffy.glb',
+            (gltf) => {
+                if (this.modelLoadId !== loadId) return;
+
+                if (this.characterModel) this.coreGroup.remove(this.characterModel);
+                // Remove the procedural Asuna mesh once the requested character
+                // has loaded, while retaining the existing scene effects.
+                if (this.manGroup) this.coreGroup.remove(this.manGroup);
+
+                const model = gltf.scene;
+                model.traverse((node) => {
+                    if (node.isMesh) {
+                        node.castShadow = true;
+                        node.receiveShadow = true;
+                    }
+                });
+
+                const bounds = new THREE.Box3().setFromObject(model);
+                const size = bounds.getSize(new THREE.Vector3());
+                const scale = 3.8 / Math.max(size.y, 0.01);
+                model.scale.setScalar(scale);
+
+                const centeredBounds = new THREE.Box3().setFromObject(model);
+                const center = centeredBounds.getCenter(new THREE.Vector3());
+                model.position.sub(center);
+                model.position.y -= 0.2;
+
+                this.characterModel = model;
+                this.coreGroup.add(model);
+            },
+            undefined,
+            (error) => console.error('Could not load the Luffy character model.', error),
+        );
+    }
+
     setSymbolType(newSymbolType) {
         this.symbolType = newSymbolType;
         this.buildAsunaCharacterGeometry();
+        this.loadLuffyModel();
     }
 
     onWindowResize() {
@@ -615,6 +658,13 @@ export class AsunaCoreEngine {
             this.headGroup.rotation.y = this.currentHeadRotation.yaw;
             this.headGroup.rotation.x = this.currentHeadRotation.pitch;
             this.headGroup.rotation.z = this.currentHeadRotation.roll;
+        }
+
+        if (this.characterModel) {
+            this.characterModel.rotation.y +=
+                (this.currentHeadRotation.yaw * 0.32 - this.characterModel.rotation.y) * 0.08;
+            this.characterModel.rotation.x +=
+                (this.currentHeadRotation.pitch * 0.12 - this.characterModel.rotation.x) * 0.08;
         }
 
         // Body Follow-Through Motion
