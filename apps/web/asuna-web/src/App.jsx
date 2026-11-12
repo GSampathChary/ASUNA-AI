@@ -3,8 +3,6 @@ import { AsunaCoreWeb } from './components/AsunaCoreWeb';
 import { CameraGesturePanel } from './components/CameraGesturePanel';
 import { useVoiceAssistant } from './hooks/useVoiceAssistant';
 import './asuna.css';
-import AnimeCharacter from './AnimeCharacter';
-import './AnimeCharacter.css';
 
 
 const clock = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -267,8 +265,7 @@ export default function App() {
         </button>
         {installPrompt && <button className="outline-button" onClick={installApp}>↓ Install app</button>}
         <button className="outline-button" onClick={() => setCameraOpen((open) => !open)}>📷 {cameraOpen ? 'Camera on' : 'Enable camera'}</button>
-<button className="outline-button" onClick={() => setShowCharacter(prev => { const next = !prev; localStorage.setItem('show_character', JSON.stringify(next)); return next; })}>👾 {showCharacter ? 'Hide' : 'Show'} Character</button>
-<button className="outline-button" onClick={() => setShowCharacter(prev => { const next = !prev; localStorage.setItem('show_character', JSON.stringify(next)); return next; })}>👾 {showCharacter ? 'Hide' : 'Show'} Character</button>
+        <button className="outline-button" onClick={() => setShowCharacter(prev => { const next = !prev; localStorage.setItem('show_character', JSON.stringify(next)); return next; })}>👾 {showCharacter ? 'Hide' : 'Show'} Character</button>
       </div>
     </header>
     <div className="main-grid">
@@ -287,11 +284,10 @@ export default function App() {
       <section className="stage" aria-label="Asuna controls">
         {cameraOpen && <CameraGesturePanel onGesture={onGesture} onCameraPose={setCameraPose} onClose={() => setCameraOpen(false)} />}
         <div className="stage-kicker"><span className="eyebrow">{nickname ? `${nickname.toUpperCase()}'S PERSONAL AI` : 'YOUR PERSONAL AI'}</span><strong>ASUNA INTERACTIVE CORE</strong></div>
-        <div className="core-visual"><AsunaCoreWeb currentState={voice.status === 'listening' ? 'LISTENING' : currentState} cameraPose={cameraPose} symbolType="humanoid" onClick={() => reactToCore('TOUCH_BURST')} onWheel={() => reactToCore('SCROLLING', 700)} /></div>
+        {showCharacter && <div className="core-visual"><AsunaCoreWeb currentState={voice.status === 'listening' ? 'LISTENING' : currentState} cameraPose={cameraPose} symbolType="humanoid" onClick={() => reactToCore('TOUCH_BURST')} onWheel={() => reactToCore('SCROLLING', 700)} /></div>}
         <div className="assistant-status"><div className="assistant-copy"><h1>Asuna control</h1><p>{voice.transcript || voiceLabel}</p><div className="control-row"><button className={`primary-button ${voice.status === 'listening' ? 'active' : ''}`} disabled={!voice.supported} onClick={voice.status === 'listening' ? voice.stop : voice.start}>{voice.status === 'listening' ? '■ Stop listening' : '🎙 Start voice'}</button><button className="outline-button" onClick={() => setCameraOpen(true)}>✋ Camera</button></div></div></div>
         <p className="privacy-note">Remote execution requires a paired device.<br />{nickname ? `Profile: ${nickname} · ` : ''}Account: {userEmail || 'Not set'}.</p>
       </section>
     </div>
-  {showCharacter && <AnimeCharacter />}
 </main>;
 }

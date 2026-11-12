@@ -525,13 +525,17 @@ export class AsunaCoreEngine {
 
                 const bounds = new THREE.Box3().setFromObject(model);
                 const size = bounds.getSize(new THREE.Vector3());
-                const scale = 3.8 / Math.max(size.y, 0.01);
+                // The source model is authored side-on. Rotate it toward the
+                // camera before applying pointer-driven turns, and keep it
+                // comfortably inside the central stage.
+                const scale = 3.05 / Math.max(size.y, 0.01);
                 model.scale.setScalar(scale);
 
                 const centeredBounds = new THREE.Box3().setFromObject(model);
                 const center = centeredBounds.getCenter(new THREE.Vector3());
                 model.position.sub(center);
                 model.position.y -= 0.2;
+                model.rotation.y = Math.PI / 2;
 
                 this.characterModel = model;
                 this.coreGroup.add(model);
@@ -662,9 +666,9 @@ export class AsunaCoreEngine {
 
         if (this.characterModel) {
             this.characterModel.rotation.y +=
-                (this.currentHeadRotation.yaw * 0.32 - this.characterModel.rotation.y) * 0.08;
+                (Math.PI / 2 + this.currentHeadRotation.yaw * 0.5 - this.characterModel.rotation.y) * 0.08;
             this.characterModel.rotation.x +=
-                (this.currentHeadRotation.pitch * 0.12 - this.characterModel.rotation.x) * 0.08;
+                (this.currentHeadRotation.pitch * 0.16 - this.characterModel.rotation.x) * 0.08;
         }
 
         // Body Follow-Through Motion
