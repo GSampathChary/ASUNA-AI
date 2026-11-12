@@ -67,10 +67,12 @@ export class AsunaCoreEngine {
 
         this.onPointerMove = this.onPointerMove.bind(this);
         this.onPointerDown = this.onPointerDown.bind(this);
+        this.onWheel = this.onWheel.bind(this);
         this.onWindowResize = this.onWindowResize.bind(this);
         window.addEventListener('pointermove', this.onPointerMove);
         window.addEventListener('resize', this.onWindowResize);
         this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
+        this.renderer.domElement.addEventListener('wheel', this.onWheel, { passive: true });
 
         this.animate();
     }
@@ -535,7 +537,15 @@ export class AsunaCoreEngine {
                 const center = centeredBounds.getCenter(new THREE.Vector3());
                 model.position.sub(center);
                 model.position.y -= 0.2;
-                model.rotation.y = Math.PI / 2;
+                // The model is authored facing +Z, which is toward the
+                // Three.js camera at +Z. Its unmodified base rotation is the
+                // front-facing pose; applying 90° made it appear in profile.
+                model.rotation.y = 0;
+
+                this.eyeBones = ['eye.L_76', 'eye.R_77']
+                    .map((name) => model.getObjectByName(name))
+                    .filter(Boolean);
+                this.eyeBaseRotations = this.eyeBones.map((eye) => eye.rotation.clone());
 
                 this.characterModel = model;
                 this.coreGroup.add(model);
@@ -582,6 +592,17 @@ export class AsunaCoreEngine {
 
     onPointerDown() {
         this.triggerClickExpressionCycle();
+    }
+
+    onWheel(event) {
+        // Horizontal mouse-wheel/trackpad scrolling also gives the eyes a
+        // natural glance direction when the cursor itself remains still.
+        const horizontalDelta = event.deltaX || event.deltaY;
+        this.targetEyeAim.x = THREE.MathUtils.clamp(
+            this.targetEyeAim.x + horizontalDelta * 0.0015,
+            -0.14,
+            0.14,
+        );
     }
 
     // Interactive Click Handler: Cycles 8 Expressions & Spawns Emote Burst Particles
@@ -666,9 +687,17 @@ export class AsunaCoreEngine {
 
         if (this.characterModel) {
             this.characterModel.rotation.y +=
-                (Math.PI / 2 + this.currentHeadRotation.yaw * 0.5 - this.characterModel.rotation.y) * 0.08;
+                (this.currentHeadRotation.yaw * 0.24 - this.characterModel.rotation.y) * 0.08;
             this.characterModel.rotation.x +=
                 (this.currentHeadRotation.pitch * 0.16 - this.characterModel.rotation.x) * 0.08;
+        }
+
+        if (this.eyeBones?.length) {
+            this.eyeBones.forEach((eye, index) => {
+                eye.rotation.copy(this.eyeBaseRotations[index]);
+                eye.rotation.y += this.currentEyeAim.x * 1.4;
+                eye.rotation.x -= this.currentEyeAim.y * 0.7;
+            });
         }
 
         // Body Follow-Through Motion
