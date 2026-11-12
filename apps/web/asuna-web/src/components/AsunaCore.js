@@ -67,12 +67,10 @@ export class AsunaCoreEngine {
 
         this.onPointerMove = this.onPointerMove.bind(this);
         this.onPointerDown = this.onPointerDown.bind(this);
-        this.onWheel = this.onWheel.bind(this);
         this.onWindowResize = this.onWindowResize.bind(this);
         window.addEventListener('pointermove', this.onPointerMove);
         window.addEventListener('resize', this.onWindowResize);
         this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
-        this.renderer.domElement.addEventListener('wheel', this.onWheel, { passive: true });
 
         this.animate();
     }
@@ -529,69 +527,12 @@ export class AsunaCoreEngine {
                 // front-facing pose; applying 90° made it appear in profile.
                 model.rotation.y = 0;
 
-                this.eyeBones = ['eye.L_76', 'eye.R_77']
-                    .map((name) => model.getObjectByName(name))
-                    .filter(Boolean);
-                this.eyeBaseRotations = this.eyeBones.map((eye) => eye.rotation.clone());
-                this.addReadableEyeHelpers(model, bounds, size);
-
                 this.characterModel = model;
                 this.coreGroup.add(model);
             },
             undefined,
             (error) => console.error('Could not load the Luffy character model.', error),
         );
-    }
-
-    createEyeHelper(eyeRadius) {
-        const anchor = new THREE.Group();
-        const white = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false });
-        const black = new THREE.MeshBasicMaterial({ color: 0x161018, depthTest: false, depthWrite: false });
-        const eyeball = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius, 20, 16), white);
-        eyeball.scale.set(0.92, 1.12, 0.50);
-        eyeball.renderOrder = 10;
-
-        const pupil = new THREE.Mesh(new THREE.SphereGeometry(eyeRadius * 0.38, 16, 12), black);
-        pupil.position.z = eyeRadius * 0.42;
-        pupil.scale.set(0.95, 1.05, 0.45);
-        pupil.renderOrder = 11;
-
-        anchor.add(eyeball);
-        eyeball.add(pupil);
-        return { anchor, pupil, eyeRadius };
-    }
-
-    addReadableEyeHelpers(model, bounds, size) {
-        if (this.eyeBones.length !== 2) {
-            // The replacement model has no skeleton. Position the helpers at
-            // measured face coordinates so this static model retains the same
-            // pointer-tracking eye behavior.
-            // Use height—not the arm-span—for facial proportions. This model
-            // has extended arms, so width-based values placed giant eyes on
-            // either side of its head.
-            const eyeRadius = Math.max(size.y * 0.018, 0.022);
-            const eyeY = bounds.max.y - size.y * 0.165;
-            const eyeZ = bounds.max.z + eyeRadius * 0.20;
-            const eyeSpacing = size.y * 0.035;
-            this.eyeHelpers = [-1, 1].map((side) => {
-                const helper = this.createEyeHelper(eyeRadius);
-                helper.anchor.position.set(bounds.getCenter(new THREE.Vector3()).x + side * eyeSpacing, eyeY, eyeZ);
-                model.add(helper.anchor);
-                return helper;
-            });
-            return;
-        }
-
-        model.updateMatrixWorld(true);
-        const leftPosition = this.eyeBones[0].getWorldPosition(new THREE.Vector3());
-        const rightPosition = this.eyeBones[1].getWorldPosition(new THREE.Vector3());
-        const eyeSeparation = leftPosition.distanceTo(rightPosition) / model.scale.x;
-        const eyeRadius = Math.max(eyeSeparation * 0.30, 0.035);
-        this.eyeHelpers = this.eyeBones.map((eye) => {
-            const helper = this.createEyeHelper(eyeRadius);
-            eye.add(helper.anchor);
-            return helper;
-        });
     }
 
     setSymbolType(newSymbolType) {
@@ -631,17 +572,6 @@ export class AsunaCoreEngine {
 
     onPointerDown() {
         this.triggerClickExpressionCycle();
-    }
-
-    onWheel(event) {
-        // Horizontal mouse-wheel/trackpad scrolling also gives the eyes a
-        // natural glance direction when the cursor itself remains still.
-        const horizontalDelta = event.deltaX || event.deltaY;
-        this.targetEyeAim.x = THREE.MathUtils.clamp(
-            this.targetEyeAim.x + horizontalDelta * 0.0015,
-            -0.14,
-            0.14,
-        );
     }
 
     // Interactive Click Handler: Cycles 8 Expressions & Spawns Emote Burst Particles
@@ -729,21 +659,6 @@ export class AsunaCoreEngine {
                 (this.currentHeadRotation.yaw * 0.24 - this.characterModel.rotation.y) * 0.08;
             this.characterModel.rotation.x +=
                 (this.currentHeadRotation.pitch * 0.16 - this.characterModel.rotation.x) * 0.08;
-        }
-
-        if (this.eyeBones?.length) {
-            this.eyeBones.forEach((eye, index) => {
-                eye.rotation.copy(this.eyeBaseRotations[index]);
-                eye.rotation.y += this.currentEyeAim.x * 1.4;
-                eye.rotation.x -= this.currentEyeAim.y * 0.7;
-            });
-        }
-
-        if (this.eyeHelpers?.length) {
-            this.eyeHelpers.forEach(({ pupil, eyeRadius }) => {
-                pupil.position.x = this.currentEyeAim.x * eyeRadius * 3.2;
-                pupil.position.y = this.currentEyeAim.y * eyeRadius * 2.6;
-            });
         }
 
         // Body Follow-Through Motion
